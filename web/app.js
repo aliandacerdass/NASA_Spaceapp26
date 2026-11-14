@@ -4,7 +4,14 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 /* ───────────────────────── text ───────────────────────── */
 const I18N = {
   en: {
-    tab_path: 'Path selector', tab_astronaut: 'Astronaut status', tab_tablet: 'Tablet view',
+    tab_path: 'Path selector', tab_astronaut: 'Astronaut status', tab_tablet: 'Tablet view', tab_rover: 'Scout rover',
+    intro_tag: 'A rover walks the route first. Then the astronaut does.', intro_begin: 'Begin mission planning',
+    intro_foot: 'NASA Space Apps Challenge 2026 · real HiRISE, CTX and THEMIS data · rover motion simulated',
+    prompt_rover: 'The rover that goes first',
+    spec_title: 'Scout rover · our own design', spec_lead: 'Six driven wheels on rocker-bogie arms, a camera arm at the front.',
+    spec_size: 'Width × length × height', spec_wheel: 'Wheel diameter, width', spec_clear: 'Ground clearance', spec_slope: 'Slope limit, safe limit',
+    spec_note: 'Dimensions are read from the team\'s CAD model, which is what you see turning here. Mass, speed and battery are not final, so route times and energy use placeholders.',
+    spec_scale: 'A 12.5 cm wheel is stopped by rocks no orbiter can see. That is why the rover goes first.',
     rail_note: 'Rover motion is simulated on real NASA terrain data.',
     prompt_choose: 'Choose a path', prompt_routes: '{target}: three routes from base',
     prompt_astronaut: 'Astronaut status', prompt_tablet: 'Astronaut tablet',
@@ -58,7 +65,14 @@ const I18N = {
     r_obstacle: 'unmapped obstacle on the return leg', r_none: 'Slope, oxygen and battery are within limits.',
   },
   tr: {
-    tab_path: 'Patika seçici', tab_astronaut: 'Astronot durumu', tab_tablet: 'Tablet görüntüsü',
+    tab_path: 'Patika seçici', tab_astronaut: 'Astronot durumu', tab_tablet: 'Tablet görüntüsü', tab_rover: 'Öncü rover',
+    intro_tag: 'Yolu önce rover yürür. Sonra astronot.', intro_begin: 'Görev planlamaya başla',
+    intro_foot: 'NASA Space Apps Challenge 2026 · gerçek HiRISE, CTX ve THEMIS verisi · rover hareketi benzetim',
+    prompt_rover: 'Yola ilk çıkan rover',
+    spec_title: 'Öncü rover · kendi tasarımımız', spec_lead: 'Rocker-bogie kollarda altı tahrikli teker, önde kamera kolu.',
+    spec_size: 'Genişlik × uzunluk × yükseklik', spec_wheel: 'Teker çapı, genişliği', spec_clear: 'Yerden yükseklik', spec_slope: 'Eğim sınırı, güvenli sınır',
+    spec_note: 'Ölçüler ekibin CAD modelinden okundu; burada dönen model o. Kütle, hız ve batarya kesin değil, bu yüzden rota süresi ve enerjisi varsayım değerlerle hesaplanıyor.',
+    spec_scale: '12,5 cm\'lik tekeri, hiçbir yörünge aracının göremediği kayalar durdurur. Rover bu yüzden önden gider.',
     rail_note: 'Rover hareketi, gerçek NASA arazi verisi üzerinde benzetimdir.',
     prompt_choose: 'Lütfen patika seçiniz', prompt_routes: '{target}: üsten üç rota',
     prompt_astronaut: 'Astronot durumu', prompt_tablet: 'Astronot tableti',
@@ -182,6 +196,20 @@ const routeGroup = new THREE.Group(), markGroup = new THREE.Group(), extraGroup 
 land.add(routeGroup, markGroup, extraGroup);
 const SKY = new THREE.Color(0xc39a78), VOID = new THREE.Color(0x0a0c11);
 
+// Rover bay: the team's CAD model on a turntable
+const bay = new THREE.Scene();
+const bayCam = new THREE.PerspectiveCamera(30, 1, 0.01, 80);
+bayCam.position.set(1.75, 0.95, 2.25); bayCam.lookAt(0, 0.3, 0);
+bay.add(new THREE.HemisphereLight(0xfff1e0, 0x1a120d, 1.1));
+const key = new THREE.DirectionalLight(0xfff4e6, 2.8); key.position.set(2.2, 3, 2); bay.add(key);
+const rim = new THREE.DirectionalLight(0xd2703f, 2.4); rim.position.set(-2.5, 1.2, -2.2); bay.add(rim);
+const turntable = new THREE.Group(); bay.add(turntable);
+const pad = new THREE.Mesh(new THREE.CircleGeometry(1.05, 96), new THREE.MeshStandardMaterial({ color: 0x241811, roughness: 1 }));
+pad.rotation.x = -Math.PI / 2; bay.add(pad);
+const padRing = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.058, 128), new THREE.MeshBasicMaterial({ color: 0xd2703f, side: THREE.DoubleSide }));
+padRing.rotation.x = -Math.PI / 2; padRing.position.y = 0.001; bay.add(padRing);
+bay.add(starField(40, 1800));
+
 const starScene = new THREE.Scene();
 const loneStars = starField(60, 3200); starScene.add(loneStars);
 
@@ -249,7 +277,10 @@ function buildLand() {
   overlaySlope = overlay('data/slope.png', 0.9);
 
   rover = new THREE.Group();
-  loadRover().then((model) => { model.scale.setScalar(ROVER_SCALE); rover.add(model); });
+  loadRover().then((model) => {
+    turntable.add(new THREE.Mesh(model.geometry, new THREE.MeshStandardMaterial({ color: 0xd9d2c6, roughness: 0.45, metalness: 0.45 })));
+    model.scale.setScalar(ROVER_SCALE); rover.add(model);
+  });
   rover.visible = false; land.add(rover);
 
   const r = mission.scenario.obstacle_radius_m / 10;
@@ -273,7 +304,7 @@ function drawRoutes() {
   for (const r of state.target.routes) {
     const on = r.id === state.routeId;
     const lift = { fastest: 3.0, efficient: 3.6, safest: 4.2 }[r.id];
-    const mesh = tube(toPoints(r.cells, lift), COLORS[r.id], on ? 2.6 : 1.3, on ? 1 : 0.5);
+    const mesh = tube(toPoints(r.cells, lift), COLORS[r.id], on ? 2.1 : 1.1, on ? 1 : 0.55);
     mesh.renderOrder = on ? 3 : 2; routeGroup.add(mesh);
   }
   const pin = (cell, color, text) => {
@@ -290,7 +321,7 @@ function frameRoute() {
   const a = world(mission.base.cell), b = world(state.target.cell);
   const mid = a.clone().lerp(b, 0.5), span = Math.max(a.distanceTo(b), 160);
   controls.target.copy(mid);
-  landCam.position.set(mid.x + span * 0.25, mid.y + span * 0.95, mid.z + span * 1.05);
+  landCam.position.set(mid.x + span * 0.35, mid.y + span * 1.25, mid.z + span * 1.55);
 }
 
 /* ───────────────────────── ledger ───────────────────────── */
@@ -382,6 +413,7 @@ function drawPanels() {
   $('t-photo').hidden = !photo;
   if (photo) $('t-photo').src = photo.file;
   $('t-caption').textContent = photo ? t('t_photo', photo) : t('t_caption');
+  $('ambient').style.backgroundImage = `url(${photo ? photo.file : 'data/basemap.jpg'})`;
   $('t-body').innerHTML = line('t_min', 'min', '–') + line('t_avg', 'mean', Math.round(f.oxygenUse)) + line('t_max', 'max', '–');
 
   const reasons = [];
@@ -500,7 +532,7 @@ function refreshTarget(reframe) {
   if (reframe) frameRoute();
 }
 function setPrompt() {
-  const key = state.view === 'astronaut' ? 'prompt_astronaut' : state.view === 'tablet' ? 'prompt_tablet'
+  const key = state.view === 'astronaut' ? 'prompt_astronaut' : state.view === 'tablet' ? 'prompt_tablet' : state.view === 'rover' ? 'prompt_rover'
     : state.phase === 'terrain' && state.target ? 'prompt_routes' : 'prompt_choose';
   $('prompt').textContent = t(key, { target: state.target?.name });
 }
@@ -583,7 +615,17 @@ function fit() {
   const host = $('host-' + state.view), w = host.clientWidth, h = host.clientHeight;
   if (!w || !h) return;
   renderer.setSize(w, h, false);
-  for (const cam of [globeCam, landCam, roverCam]) { cam.aspect = w / h; cam.updateProjectionMatrix(); }
+  // The scene fills the window; shift its centre into the area the panels leave free.
+  const wide = window.innerWidth > 900, rail = wide ? 212 : 0;
+  const ledger = state.view === 'path' && state.phase === 'terrain' ? $('ledger').offsetHeight + 20 : 0;
+  document.documentElement.style.setProperty('--ledger-h', ledger + 'px');
+  const dx = !wide ? 0 : state.view === 'rover' ? 100 : state.view === 'path' ? -rail / 2 : 0;
+  const dy = wide ? ledger / 2 : 0;
+  for (const cam of [globeCam, landCam, roverCam, bayCam]) {
+    cam.aspect = w / h;
+    if (dx || dy) cam.setViewOffset(w, h, dx, dy, w, h); else cam.clearViewOffset();
+    cam.updateProjectionMatrix();
+  }
 }
 function setView(view) {
   state.view = view;
@@ -633,6 +675,9 @@ function frame(now) {
     renderer.render(land, roverCam);
   } else if (state.view === 'tablet') {
     renderer.render(starScene, globeCam);
+  } else if (state.view === 'rover') {
+    turntable.rotation.y += dt * 0.32;
+    renderer.render(bay, bayCam);
   } else {
     stepDrive(dt); controls.update();
     renderer.render(land, landCam);
@@ -656,6 +701,7 @@ async function start() {
   $('target-select').addEventListener('change', pick); pick();
   $('coords').addEventListener('submit', onSubmit);
   $('send').addEventListener('click', sendRover);
+  $('intro-go').addEventListener('click', () => { $('intro').classList.add('is-gone'); document.body.classList.add('started'); });
   $('back').addEventListener('click', () => { if (!state.busy) setPhase('globe'); });
   $('layer-slope').addEventListener('change', (e) => { overlaySlope.visible = e.target.checked; setLegend(); });
   $('layer-thermal').addEventListener('change', (e) => { overlayThermal.visible = e.target.checked; setLegend(); });
@@ -665,7 +711,7 @@ async function start() {
   });
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   document.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => setLang(b.dataset.lang)));
-  new ResizeObserver(fit).observe($('view-path').parentElement);
+  new ResizeObserver(fit).observe(document.body);
   window.addEventListener('resize', () => { fit(); if (state.target && state.phase === 'terrain') drawLedger(); });
   setView('path');
   requestAnimationFrame(frame);

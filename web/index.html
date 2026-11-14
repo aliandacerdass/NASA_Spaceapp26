@@ -5,21 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SafePath: rover first, then human</title>
 <meta name="description" content="A scout rover tests the route across Jezero crater before an astronaut walks it.">
+<link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
-<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.min.js" } }
 </script>
 </head>
 <body>
+
+<div class="intro" id="intro">
+  <p class="eyebrow intro-place">Jezero crater · 18.47° N 77.41° E</p>
+  <h1 class="intro-title">SafePath</h1>
+  <p class="intro-tag" data-i18n="intro_tag">A rover walks the route first. Then the astronaut does.</p>
+  <button class="intro-go" id="intro-go" data-i18n="intro_begin">Begin mission planning</button>
+  <p class="intro-foot" data-i18n="intro_foot">NASA Space Apps Challenge 2026 · real HiRISE, CTX and THEMIS data · rover motion simulated</p>
+</div>
+
 <div class="app">
 
   <aside class="rail">
     <a class="brand" href="./" aria-label="SafePath">
-      <svg viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
+      <svg viewBox="0 0 44 44" width="40" height="40" aria-hidden="true">
         <circle cx="22" cy="22" r="20.5" fill="none" stroke="currentColor" stroke-width="1"/>
         <path d="M9 30 C15 30 14 20 21 20 S27 12 35 13" fill="none" stroke="var(--rust)" stroke-width="2" stroke-linecap="round"/>
         <circle cx="9" cy="30" r="2.4" fill="var(--dust)"/>
@@ -31,6 +40,7 @@
       <button class="tab is-active" data-view="path"><span data-i18n="tab_path">Path selector</span></button>
       <button class="tab" data-view="astronaut"><span data-i18n="tab_astronaut">Astronaut status</span></button>
       <button class="tab" data-view="tablet"><span data-i18n="tab_tablet">Tablet view</span></button>
+      <button class="tab" data-view="rover"><span data-i18n="tab_rover">Scout rover</span></button>
     </nav>
     <p class="rail-note" data-i18n="rail_note">Rover motion is simulated on real NASA terrain data.</p>
   </aside>
@@ -46,43 +56,41 @@
 
     <!-- ───────────── Path selector ───────────── -->
     <section class="view is-active" id="view-path">
-      <div class="stage" id="stage">
-        <div class="canvas-host" id="host-path"></div>
+      <div class="canvas-host full" id="host-path"></div>
+      <div class="fade" id="fade"></div>
 
-        <form class="coords" id="coords" autocomplete="off">
-          <p class="eyebrow" data-i18n="coords_title">Traverse coordinates</p>
-          <div class="coord-row">
-            <label for="start-lat" data-i18n="coords_start">Start</label>
-            <input id="start-lat" inputmode="decimal" aria-label="Start latitude">
-            <input id="start-lon" inputmode="decimal" aria-label="Start longitude">
-          </div>
-          <div class="coord-row">
-            <label for="end-lat" data-i18n="coords_end">End</label>
-            <input id="end-lat" inputmode="decimal" placeholder="18.4868" aria-label="End latitude">
-            <input id="end-lon" inputmode="decimal" placeholder="77.4065" aria-label="End longitude">
-          </div>
-          <p class="coord-units">°N &nbsp;·&nbsp; °E</p>
-          <label class="eyebrow" for="target-select" data-i18n="coords_surveyed">Surveyed targets</label>
-          <select id="target-select"></select>
-          <button type="submit" class="go" id="go" data-i18n="coords_go">Fly to site</button>
-          <p class="coord-msg" id="coord-msg" role="status"></p>
-        </form>
-
-        <div class="layers" id="layers" hidden>
-          <p class="eyebrow" data-i18n="layers_title">Data layers</p>
-          <label><input type="checkbox" checked disabled> <span data-i18n="layer_optical">Optical image (CTX)</span></label>
-          <label><input type="checkbox" id="layer-slope"> <span data-i18n="layer_slope">Slope (HiRISE)</span></label>
-          <label><input type="checkbox" id="layer-thermal"> <span data-i18n="layer_thermal">Thermal inertia (THEMIS)</span></label>
-          <p class="legend" id="legend"></p>
-          <p class="legend" data-i18n="vertical_note">Relief ×2. Rover not to scale.</p>
+      <form class="coords glass" id="coords" autocomplete="off">
+        <p class="eyebrow" data-i18n="coords_title">Traverse coordinates</p>
+        <div class="coord-row">
+          <label for="start-lat" data-i18n="coords_start">Start</label>
+          <input id="start-lat" inputmode="decimal" aria-label="Start latitude">
+          <input id="start-lon" inputmode="decimal" aria-label="Start longitude">
         </div>
+        <div class="coord-row">
+          <label for="end-lat" data-i18n="coords_end">End</label>
+          <input id="end-lat" inputmode="decimal" placeholder="18.4868" aria-label="End latitude">
+          <input id="end-lon" inputmode="decimal" placeholder="77.4065" aria-label="End longitude">
+        </div>
+        <p class="coord-units">°N &nbsp;·&nbsp; °E</p>
+        <label class="eyebrow" for="target-select" data-i18n="coords_surveyed">Surveyed targets</label>
+        <select id="target-select"></select>
+        <button type="submit" class="go" id="go" data-i18n="coords_go">Fly to site</button>
+        <p class="coord-msg" id="coord-msg" role="status"></p>
+      </form>
 
-        <div class="log" id="log" aria-live="polite" hidden></div>
-        <button class="back" id="back" hidden data-i18n="back_globe">← Mars</button>
-        <div class="fade" id="fade"></div>
+      <div class="layers glass" id="layers" hidden>
+        <p class="eyebrow" data-i18n="layers_title">Data layers</p>
+        <label><input type="checkbox" checked disabled> <span data-i18n="layer_optical">Optical image (CTX)</span></label>
+        <label><input type="checkbox" id="layer-slope"> <span data-i18n="layer_slope">Slope (HiRISE)</span></label>
+        <label><input type="checkbox" id="layer-thermal"> <span data-i18n="layer_thermal">Thermal inertia (THEMIS)</span></label>
+        <p class="legend" id="legend"></p>
+        <p class="legend" data-i18n="vertical_note">Relief ×2. Rover not to scale.</p>
+        <button type="button" class="back" id="back" data-i18n="back_globe">← Mars</button>
       </div>
 
-      <div class="ledger" id="ledger" hidden>
+      <div class="log" id="log" aria-live="polite" hidden></div>
+
+      <div class="ledger glass" id="ledger" hidden>
         <div class="ledger-head">
           <p class="eyebrow" id="ledger-title"></p>
           <button class="send" id="send" data-i18n="send_rover">Send rover</button>
@@ -94,26 +102,25 @@
 
     <!-- ───────────── Astronaut status ───────────── -->
     <section class="view" id="view-astronaut">
-      <div class="canvas-host bg" id="host-astronaut"></div>
+      <div class="canvas-host full" id="host-astronaut"></div>
+      <figure class="hero-photo">
+        <img src="assets/astronaut.jpg" alt="Astronaut in a spacesuit on the lunar surface">
+        <figcaption data-i18n="photo_credit">Apollo 11, AS11-40-5903. NASA.</figcaption>
+      </figure>
       <div class="astro">
-        <div class="vitals">
+        <div class="vitals glass">
           <p class="eyebrow"><span data-i18n="vitals_title">Suit telemetry</span> <span class="sim" data-i18n="simulated">simulated</span></p>
           <dl>
-            <div><dt data-i18n="v_breath">Breathing</dt><dd><span id="v-breath">16</span> <small data-i18n="per_min">/min</small></dd></div>
+            <div><dt data-i18n="v_breath">Breathing</dt><dd><span id="v-breath">13</span> <small data-i18n="per_min">/min</small></dd></div>
             <div><dt data-i18n="v_heart">Heart rate</dt><dd><span id="v-heart">78</span> <small>bpm</small></dd></div>
-            <div><dt data-i18n="v_oxygen">Oxygen</dt><dd><span id="v-oxygen">96</span> <small>%</small></dd></div>
-            <div><dt data-i18n="v_battery">Suit battery</dt><dd><span id="v-battery">91</span> <small>%</small></dd></div>
+            <div><dt data-i18n="v_oxygen">Oxygen</dt><dd><span id="v-oxygen">96.0</span> <small>%</small></dd></div>
+            <div><dt data-i18n="v_battery">Suit battery</dt><dd><span id="v-battery">91.0</span> <small>%</small></dd></div>
           </dl>
-          <canvas id="ecg" width="520" height="90" aria-hidden="true"></canvas>
+          <canvas id="ecg" width="640" height="90" aria-hidden="true"></canvas>
           <button class="sound" id="sound" aria-pressed="true"><span data-i18n="sound_on">Breathing sound on</span></button>
         </div>
 
-        <figure class="portrait">
-          <div class="visor"><img src="assets/astronaut.jpg" alt="Astronaut in a spacesuit on the lunar surface"></div>
-          <figcaption data-i18n="photo_credit">Apollo 11, AS11-40-5903. NASA.</figcaption>
-        </figure>
-
-        <div class="forecast">
+        <div class="forecast glass">
           <p class="eyebrow" data-i18n="forecast_title">Expected at end of traverse</p>
           <p class="forecast-route" id="f-route"></p>
           <dl>
@@ -130,38 +137,58 @@
 
     <!-- ───────────── Tablet view ───────────── -->
     <section class="view" id="view-tablet">
+      <div class="ambient" id="ambient"></div>
       <div class="tablet">
         <div class="tablet-cam"></div>
         <div class="tablet-screen">
-          <div class="t-head">
-            <p class="eyebrow" data-i18n="t_title">Along the route</p>
-            <p class="t-route" id="t-route"></p>
+          <div class="canvas-host" id="host-tablet"></div>
+          <img class="t-photo" id="t-photo" alt="" hidden>
+          <div class="t-top">
+            <div class="t-head">
+              <p class="eyebrow" data-i18n="t_title">Along the route</p>
+              <p class="t-route" id="t-route"></p>
+            </div>
+            <table class="t-table">
+              <thead><tr>
+                <th></th>
+                <th data-i18n="t_slope">Slope °</th>
+                <th data-i18n="t_elev">Elevation m</th>
+                <th data-i18n="t_ground">Ground (TI)</th>
+                <th data-i18n="t_temp">Air temp °C</th>
+                <th data-i18n="t_press">Pressure Pa</th>
+                <th data-i18n="t_rad">Radiation mGy/day</th>
+                <th data-i18n="t_oxy">Oxygen use %</th>
+              </tr></thead>
+              <tbody id="t-body"></tbody>
+            </table>
           </div>
-          <table class="t-table">
-            <thead><tr>
-              <th></th>
-              <th data-i18n="t_slope">Slope °</th>
-              <th data-i18n="t_elev">Elevation m</th>
-              <th data-i18n="t_ground">Ground (TI)</th>
-              <th data-i18n="t_temp">Air temp °C</th>
-              <th data-i18n="t_press">Pressure Pa</th>
-              <th data-i18n="t_rad">Radiation mGy/day</th>
-              <th data-i18n="t_oxy">Oxygen use %</th>
-            </tr></thead>
-            <tbody id="t-body"></tbody>
-          </table>
-          <div class="t-view">
-            <div class="canvas-host" id="host-tablet"></div>
-            <img class="t-photo" id="t-photo" alt="" hidden>
+          <div class="t-bottom">
             <p class="t-caption" id="t-caption"></p>
-          </div>
-          <p class="t-note" id="t-note"></p>
-          <div class="t-status">
-            <span class="lamp lamp-risk" id="lamp-risk"><i></i><span data-i18n="t_risk">Risk</span></span>
-            <span class="lamp lamp-safe" id="lamp-safe"><i></i><span data-i18n="t_safe">Safe</span></span>
-            <span class="t-reason" id="t-reason"></span>
+            <p class="t-note" id="t-note"></p>
+            <div class="t-status">
+              <span class="lamp lamp-risk" id="lamp-risk"><i></i><span data-i18n="t_risk">Risk</span></span>
+              <span class="lamp lamp-safe" id="lamp-safe"><i></i><span data-i18n="t_safe">Safe</span></span>
+              <span class="t-reason" id="t-reason"></span>
+            </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ───────────── Scout rover ───────────── -->
+    <section class="view" id="view-rover">
+      <div class="canvas-host full" id="host-rover"></div>
+      <div class="spec glass">
+        <p class="eyebrow" data-i18n="spec_title">Scout rover · our own design</p>
+        <p class="spec-lead" data-i18n="spec_lead">Six driven wheels on rocker-bogie arms, a camera arm at the front.</p>
+        <dl>
+          <div><dt data-i18n="spec_size">Width × length × height</dt><dd>561 × 823 × 685 <small>mm</small></dd></div>
+          <div><dt data-i18n="spec_wheel">Wheel diameter, width</dt><dd>125, 70 <small>mm</small></dd></div>
+          <div><dt data-i18n="spec_clear">Ground clearance</dt><dd>≈ 230 <small>mm</small></dd></div>
+          <div><dt data-i18n="spec_slope">Slope limit, safe limit</dt><dd>30°, 15°</dd></div>
+        </dl>
+        <p class="fine" data-i18n="spec_note">Dimensions are read from the team's CAD model, which is what you see turning here. Mass, speed and battery are not final, so route times and energy use placeholders.</p>
+        <p class="fine" data-i18n="spec_scale">A 12.5 cm wheel is stopped by rocks no orbiter can see. That is why the rover goes first.</p>
       </div>
     </section>
 

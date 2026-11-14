@@ -31,7 +31,7 @@ the route with D* Lite when the rover meets an obstacle the orbital map did not 
 | Battery and oxygen check for the round trip | Working, with placeholder rover numbers |
 | Return trip with a hidden obstacle and D* Lite replanning | Working |
 | Six real Perseverance science stops as selectable targets | Working |
-| Web interface: 3D Mars globe, 3D terrain, route ledger, astronaut status, tablet view | Working |
+| Web interface: 3D Mars globe, 3D terrain, route ledger, astronaut status, tablet view, rover showcase | Working |
 
 ## Mission area
 
@@ -157,6 +157,8 @@ python -m http.server 8765 --directory web
   temperature and pressure Perseverance measured in Jezero, and a real Navcam
   photo Perseverance took at the arrival point. The team's delta-top target has
   no rover photo, so its view is rendered from the terrain data and labelled so.
+
+- **Scout rover**: the team's CAD model on a turntable with its measured dimensions.
 
 Routes are precomputed by the Python engine for seven surveyed targets; a typed
 coordinate snaps to the nearest one. `pipeline/export_web.py` builds `web/data`.
