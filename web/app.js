@@ -8,6 +8,8 @@ const I18N = {
     prompt_sources: 'Where every number comes from',
     src_lead: 'Everything on these screens is either measured data from the sources below or labelled as simulated. Rover motion, the hidden obstacle, suit telemetry and the rover\'s mass, speed and battery are simulated or placeholder values.',
     src_g_terrain: 'Terrain and imagery', src_g_mission: 'Rover positions and photographs', src_g_env: 'Radiation and weather', src_g_crew: 'Crew and rover limits', src_g_method: 'Method, software and our own work', src_no_link: 'no public link',
+    src_g_ai: 'Use of artificial intelligence',
+    src_ai: 'AI coding assistants, including Anthropic\'s Claude, were used to write and review the code, to process the data and to search for sources. The team decided the concept, checked the outputs and is responsible for the content. No AI-generated images or video are used: every image here is a NASA or USGS product, or is drawn by code from the data.',
     intro_tag: 'A rover walks the route first. Then the astronaut does.', intro_begin: 'Begin mission planning',
     intro_foot: 'NASA Space Apps Challenge 2026 · real HiRISE, CTX and THEMIS data · rover motion simulated',
     prompt_rover: 'The rover that goes first',
@@ -72,6 +74,8 @@ const I18N = {
     prompt_sources: 'Her sayının geldiği yer',
     src_lead: 'Bu ekranlardaki her şey ya aşağıdaki kaynaklardan gelen ölçülmüş veridir ya da benzetim olarak etiketlenmiştir. Rover hareketi, gizli engel, giysi telemetrisi ve rover\'ın kütle, hız ve batarya değerleri benzetim ya da varsayımdır.',
     src_g_terrain: 'Arazi ve görüntü', src_g_mission: 'Rover konumları ve fotoğraflar', src_g_env: 'Radyasyon ve hava', src_g_crew: 'Mürettebat ve rover sınırları', src_g_method: 'Yöntem, yazılım ve kendi işimiz', src_no_link: 'herkese açık link yok',
+    src_g_ai: 'Yapay zekâ kullanımı',
+    src_ai: 'Kodun yazılması ve gözden geçirilmesinde, verinin işlenmesinde ve kaynak aramada Anthropic\'in Claude\'u dahil yapay zekâ kodlama yardımcıları kullanıldı. Fikre ekip karar verdi, çıktıları ekip kontrol etti ve içerikten ekip sorumludur. Yapay zekâ ile üretilmiş görsel ya da video kullanılmadı: buradaki her görsel ya bir NASA ya da USGS ürünüdür ya da veriden kodla çizilmiştir.',
     intro_tag: 'Yolu önce rover yürür. Sonra astronot.', intro_begin: 'Görev planlamaya başla',
     intro_foot: 'NASA Space Apps Challenge 2026 · gerçek HiRISE, CTX ve THEMIS verisi · rover hareketi benzetim',
     prompt_rover: 'Yola ilk çıkan rover',
@@ -183,6 +187,7 @@ function drawSources() {
       (link ? `<a class="src-link" href="${link}" target="_blank" rel="noopener">${link.replace(/^https?:\/\//, '')}</a>`
             : `<span class="src-none">${t('src_no_link')}</span>`) + '</div>';
   }
+  html += `<p class="eyebrow src-group">${t('src_g_ai')}</p><p class="src-ai">${t('src_ai')}</p>`;
   $('sources').innerHTML = html;
 }
 
