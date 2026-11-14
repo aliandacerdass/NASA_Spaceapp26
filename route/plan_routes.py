@@ -23,7 +23,17 @@ THERMAL = ROOT / "data/layers/jezero_thermal_inertia_100m.tif"
 
 # Mission endpoints (lat, lon in degrees).
 START = (18.4446, 77.4509)  # Perseverance landing site, crater floor
-GOAL = (18.4868, 77.4065)   # science target on top of the western delta
+GOAL = (18.4868, 77.4065)   # team-chosen target on the delta top, behind the scarp
+
+# Places where Perseverance actually stopped (lat, lon from NASA's M20 waypoints).
+STOPS = [
+    ("rochette", "Rochette", 18.43074, 77.44437, "First two rock cores of the mission"),
+    ("three_forks", "Three Forks", 18.45263, 77.40776, "Sample depot at the delta base"),
+    ("amalik", "Amalik", 18.45073, 77.40144, "Sulfate- and carbonate-bearing mudstone"),
+    ("wildcat_ridge", "Wildcat Ridge", 18.45865, 77.40592, "Strongest organic detections of the mission"),
+    ("berea", "Berea", 18.47021, 77.38399, "Delta-top core of river-borne sediment"),
+    ("belva", "Belva crater viewpoint", 18.48293, 77.36901, "Layers exposed in the crater wall"),
+]
 
 G_MARS = 3.71  # m/s^2
 
@@ -42,7 +52,9 @@ SOIL = {
     "thermal_inertia_loose": 150.0, "rolling_resistance_loose": 0.25,
     "thermal_inertia_firm": 350.0, "rolling_resistance_firm": 0.10,
 }
-CREW = {"walk_speed_ms": 1.0, "oxygen_h": 8.0, "oxygen_reserve": 0.25}
+# Crew numbers are sourced but lunar: 8 h EVA design requirement (NASA xEMU),
+# 3.3 km/h planned walking speed and 20% emergency walk-back pad (Apollo).
+CREW = {"walk_speed_ms": 3.3 / 3.6, "oxygen_h": 8.0, "oxygen_reserve": 0.20}
 
 PROFILES = {
     "fastest": "Shortest driving time",
@@ -177,16 +189,26 @@ def main():
     start, goal = to_cell(START, meta), to_cell(GOAL, meta)
     inertia, crr = rolling_resistance(elev.shape)
 
-    routes = []
-    for name in PROFILES:
-        costs, flat = edge_costs(name, elev, slope, crr, meta)
-        planner = DStarLite(costs, width, start[0] * width + start[1],
-                            goal[0] * width + goal[1], min_step_cost=flat)
-        path = planner.path()
-        if path is None:
-            raise SystemExit(f"{name}: goal unreachable")
-        cells = [divmod(u, width) for u in path]
-        routes.append(describe(name, cells, elev, slope, inertia, crr, meta))
+    all_costs = {name: edge_costs(name, elev, slope, crr, meta) for name in PROFILES}
+
+    def plan(goal):
+        routes = []
+        for name, (costs, flat) in all_costs.items():
+            planner = DStarLite(costs, width, start[0] * width + start[1],
+                                goal[0] * width + goal[1], min_step_cost=flat)
+            path = planner.path()
+            if path is None:
+                raise SystemExit(f"{name}: goal {goal} unreachable")
+            cells = [divmod(u, width) for u in path]
+            routes.append(describe(name, cells, elev, slope, inertia, crr, meta))
+        return routes
+
+    routes = plan(goal)
+    stops = []
+    for stop_id, label, lat, lon, why in STOPS:
+        cell = to_cell((lat, lon), meta)
+        stops.append({"id": stop_id, "name": label, "why": why, "cell": list(cell),
+                      "lonlat": to_lonlat(*cell, meta), "routes": plan(cell)})
 
     out = {
         "grid": meta,
@@ -195,16 +217,20 @@ def main():
         "rover": ROVER,
         "soil": SOIL,
         "crew": CREW,
-        "assumptions": "Rover, soil and crew numbers are placeholders; rover motion is simulated.",
+        "assumptions": "Rover and soil numbers are placeholders; crew numbers are lunar values; "
+                       "rover motion is simulated.",
         "routes": routes,
+        "stops": stops,
     }
     (DATA / "routes.json").write_text(json.dumps(out, separators=(",", ":")) + "\n")
     for r in routes:
         print({k: v for k, v in r.items() if k not in ("cells", "path")})
-    preview(elev, slope, meta, routes)
+    for s in stops:
+        print(s["name"], [(r["id"], r["distance_m"], r["max_slope_deg"]) for r in s["routes"]])
+    preview(elev, slope, meta, routes, stops)
 
 
-def preview(elev, slope, meta, routes):
+def preview(elev, slope, meta, routes, stops):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -222,6 +248,10 @@ def preview(elev, slope, meta, routes):
     (r0, c0), (r1, c1) = routes[0]["cells"][0], routes[0]["cells"][-1]
     ax.plot(c0, r0, "wo", ms=9)
     ax.plot(c1, r1, "w*", ms=16)
+    for s in stops:
+        ax.plot(s["cell"][1], s["cell"][0], "s", color="white", ms=5)
+        ax.annotate(s["name"], (s["cell"][1], s["cell"][0]), color="white", fontsize=8,
+                    xytext=(5, 4), textcoords="offset points")
     ax.legend(loc="lower left", fontsize=9)
     ax.set_title("Jezero delta: start (circle) to goal (star); red = slope above safe limit")
     ax.axis("off")
