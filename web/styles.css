@@ -170,7 +170,7 @@ body:not(.started) :is(.rail, .bar, .glass, .log) { opacity: 0 !important; anima
 .back:hover { color: var(--dust); border-color: var(--dust); }
 
 .log {
-  position: absolute; left: 22px; bottom: calc(var(--ledger-h) + 34px); max-width: 560px;
+  position: absolute; left: 320px; bottom: calc(var(--ledger-h) + 34px); max-width: 560px;
   font: 400 12.5px/1.65 var(--mono);
   padding: 10px 14px; border-left: 2px solid var(--rust);
   background: linear-gradient(90deg, rgba(var(--ink), .8), rgba(var(--ink), .15));
