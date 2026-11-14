@@ -7,6 +7,7 @@ Usage: python -m route.plan_routes
 """
 import json
 import math
+from array import array
 from pathlib import Path
 
 import numpy as np
@@ -61,7 +62,7 @@ def edge_terms(elev, slope, meta):
 
 
 def edge_costs(profile, elev, slope, meta):
-    """costs[d] (flat lists) for a profile and the lowest straight-move cost."""
+    """costs[d] (flat arrays) for a profile and the lowest straight-move cost."""
     r, max_slope, safe = ROVER, meta["max_slope_deg"], meta["safe_slope_deg"]
     costs = []
     for length, s, climb, ok in edge_terms(elev, slope, meta):
@@ -71,9 +72,10 @@ def edge_costs(profile, elev, slope, meta):
                 c = time_s
             elif profile == "safest":
                 c = length * (1.0 + (s / safe) ** 3)
+                ok = ok & (s <= safe)  # never enters cells above the safe limit
             else:
                 c = energy_wh(length, climb, time_s)
-        costs.append(np.where(ok, c, INF).ravel().tolist())
+        costs.append(array("d", np.where(ok, c, INF).tobytes()))
     flat = {
         "fastest": meta["cell_m"] / r["speed_ms"],
         "safest": meta["cell_m"],
