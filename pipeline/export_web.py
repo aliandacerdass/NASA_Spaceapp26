@@ -49,14 +49,12 @@ PHOTOS = {
     "amalik": (565, "00565/ids/edr/browse/ncam/NLF_0565_0717106894_160ECM_N0290000NCAM03565_01_195J01_1200.jpg"),
     "three_forks": (652, "00652/ids/edr/browse/ncam/NLF_0652_0724830144_855ECM_N0320148NCAM03652_05_095J01_1200.jpg"),
     "berea": (736, "00736/ids/edr/browse/ncam/NLF_0736_0732292608_746ECM_N0370000NCAM03736_01_195J01_1200.jpg"),
-    "belva": (770, "00770/ids/edr/browse/ncam/NLF_0770_0735307364_034ECM_N0390650NCAM00709_01_095J01_1200.jpg"),
+    "belva": (770, "00770/ids/edr/browse/ncam/NLF_0770_0735308903_284ECM_N0390650NCAM12770_01_195J01_1200.jpg"),
 }
 WEATHER_FEED = "https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json"
 
 # Representative surface radiation: Curiosity RAD in Gale crater, not Jezero.
-# Dose equivalent is the published 2012-2013 mean; the absorbed dose statistics
-# come from pipeline/fetch_rad.py (measured, whole mission).
-DOSE_EQUIVALENT_MSV_PER_DAY = 0.67
+# The absorbed dose statistics come from pipeline/fetch_rad.py (measured, whole mission).
 
 
 def get(url):
@@ -115,7 +113,6 @@ def weather():
 def radiation():
     rad = json.loads((DATA / "radiation.json").read_text())
     return {
-        "dose_equivalent_msv_per_day": DOSE_EQUIVALENT_MSV_PER_DAY,
         "absorbed_mgy_per_day": rad["absorbed_dose_mgy_per_day"],
         "observations": rad["sampled_observations"],
         "sol_range": rad["sol_range"],

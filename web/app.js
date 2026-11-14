@@ -52,7 +52,7 @@ const I18N = {
     f_oxygen: 'Oxygen left', f_walk: 'Round trip on foot', f_battery: 'Rover battery left', f_dose: 'Radiation dose', hours: 'h',
     verdict_ok: 'Within limits. The {r}% oxygen reserve is kept.',
     verdict_risk: 'Outside limits. The {r}% oxygen reserve is not kept.',
-    forecast_note: 'Oxygen uses an 8 h suit and Apollo walking speed. Rover battery uses placeholder numbers. Radiation is a representative Gale crater measurement.',
+    forecast_note: 'Oxygen uses an 8 h suit and Apollo walking speed. Rover battery uses placeholder numbers. Radiation is the mean absorbed dose rate Curiosity measured in Gale crater, 2012 to 2026.',
     no_target: 'Choose a target in Path selector first.',
     t_title: 'Along the route', t_slope: 'Slope °', t_elev: 'Elevation m', t_ground: 'Ground (TI)',
     t_rad: 'Radiation mGy/day', t_oxy: 'Oxygen use %', t_min: 'Min', t_avg: 'Avg', t_max: 'Max',
@@ -113,7 +113,7 @@ const I18N = {
     f_oxygen: 'Kalan oksijen', f_walk: 'Yürüyerek gidiş dönüş', f_battery: 'Kalan rover bataryası', f_dose: 'Radyasyon dozu', hours: 'sa',
     verdict_ok: 'Sınırlar içinde. %{r} oksijen payı korunuyor.',
     verdict_risk: 'Sınırların dışında. %{r} oksijen payı korunmuyor.',
-    forecast_note: 'Oksijen 8 saatlik giysi ve Apollo yürüme hızına göre. Rover bataryası varsayım değerlerle. Radyasyon, Gale kraterinden temsili ölçüm.',
+    forecast_note: 'Oksijen 8 saatlik giysi ve Apollo yürüme hızına göre. Rover bataryası varsayım değerlerle. Radyasyon, Curiosity\'nin Gale kraterinde 2012–2026 arasında ölçtüğü ortalama soğurulan doz hızı.',
     no_target: 'Önce Patika seçici\'den bir hedef seçin.',
     t_title: 'Yol boyu değerler', t_slope: 'Eğim °', t_elev: 'Yükseklik m', t_ground: 'Zemin (IA)',
     t_rad: 'Radyasyon mGy/gün', t_oxy: 'Oksijen kullanımı %', t_min: 'Min', t_avg: 'Ort', t_max: 'Maks',
@@ -279,8 +279,9 @@ async function loadRover() {  // the team's CAD model, see pipeline/export_rover
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(buf, 8, nVert * 3), 3));
   geo.setIndex(new THREE.BufferAttribute(new Uint32Array(buf, 8 + nVert * 12, nIdx), 1));
+  geo.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(buf, 8 + nVert * 12 + nIdx * 4, nVert * 3), 3, true));
   geo.computeVertexNormals();
-  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xe9dfcf, roughness: 0.55, metalness: 0.25 }));
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.3 }));
 }
 function buildLand() {
   const m = mission.grid.mesh;
@@ -307,7 +308,7 @@ function buildLand() {
 
   rover = new THREE.Group();
   loadRover().then((model) => {
-    turntable.add(new THREE.Mesh(model.geometry, new THREE.MeshStandardMaterial({ color: 0xd9d2c6, roughness: 0.45, metalness: 0.45 })));
+    turntable.add(new THREE.Mesh(model.geometry, model.material));
     model.scale.setScalar(ROVER_SCALE); rover.add(model);
   });
   rover.visible = false; land.add(rover);
@@ -417,7 +418,7 @@ function forecast() {
   const oxygenLeft = (1 - r.round_trip_walk_h / crew.oxygen_h) * 100;
   const batteryLeft = (1 - r.round_trip_energy_wh / rv.battery_wh) * 100;
   return { r, oxygenLeft, batteryLeft, oxygenUse: 100 - oxygenLeft,
-           dose: mission.radiation.dose_equivalent_msv_per_day * r.round_trip_walk_h / 24 };
+           dose: mission.radiation.absorbed_mgy_per_day.mean * r.round_trip_walk_h / 24 };
 }
 function scenarioApplies() {
   return state.target.id === mission.scenario.target && state.routeId === mission.scenario.profile;
