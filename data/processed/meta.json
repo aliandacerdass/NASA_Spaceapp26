@@ -1,0 +1,18 @@
+{
+  "source": "M20_JezeroCrater_CTXDEM_20m.tif",
+  "shape": [
+    500,
+    500
+  ],
+  "cell_m": 20.0,
+  "north_lat": 18.554291222955165,
+  "south_lat": 18.38558517437401,
+  "west_lon": 77.32115001006676,
+  "east_lon": 77.49901426754299,
+  "elev_min_m": -2648.262939453125,
+  "elev_max_m": -2169.533203125,
+  "max_slope_deg": 30.0,
+  "safe_slope_deg": 15.0,
+  "impassable_pct": 0.0,
+  "above_safe_pct": 1.5
+}
