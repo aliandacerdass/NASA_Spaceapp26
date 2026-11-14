@@ -41,6 +41,7 @@
       <button class="tab" data-view="astronaut"><span data-i18n="tab_astronaut">Astronaut status</span></button>
       <button class="tab" data-view="tablet"><span data-i18n="tab_tablet">Tablet view</span></button>
       <button class="tab" data-view="rover"><span data-i18n="tab_rover">Scout rover</span></button>
+      <button class="tab" data-view="sources"><span data-i18n="tab_sources">Sources</span></button>
     </nav>
     <p class="rail-note" data-i18n="rail_note">Rover motion is simulated on real NASA terrain data.</p>
   </aside>
@@ -190,6 +191,12 @@
         <p class="fine" data-i18n="spec_note">Dimensions are read from the team's CAD model, which is what you see turning here. Mass, speed and battery are not final, so route times and energy use placeholders.</p>
         <p class="fine" data-i18n="spec_scale">A 12.5 cm wheel is stopped by rocks no orbiter can see. That is why the rover goes first.</p>
       </div>
+    </section>
+
+    <!-- ───────────── Sources ───────────── -->
+    <section class="view" id="view-sources">
+      <div class="canvas-host full" id="host-sources"></div>
+      <div class="sources glass" id="sources"></div>
     </section>
 
   </main>

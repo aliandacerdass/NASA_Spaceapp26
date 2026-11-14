@@ -159,6 +159,8 @@ python -m http.server 8765 --directory web
   no rover photo, so its view is rendered from the terrain data and labelled so.
 
 - **Scout rover**: the team's CAD model on a turntable with its measured dimensions.
+- **Sources**: every data source with what it is used for and a link, so each
+  number on screen can be traced.
 
 Routes are precomputed by the Python engine for seven surveyed targets; a typed
 coordinate snaps to the nearest one. `pipeline/export_web.py` builds `web/data`.

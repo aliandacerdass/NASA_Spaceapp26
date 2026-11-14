@@ -4,7 +4,10 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 /* ───────────────────────── text ───────────────────────── */
 const I18N = {
   en: {
-    tab_path: 'Path selector', tab_astronaut: 'Astronaut status', tab_tablet: 'Tablet view', tab_rover: 'Scout rover',
+    tab_path: 'Path selector', tab_astronaut: 'Astronaut status', tab_tablet: 'Tablet view', tab_rover: 'Scout rover', tab_sources: 'Sources',
+    prompt_sources: 'Where every number comes from',
+    src_lead: 'Everything on these screens is either measured data from the sources below or labelled as simulated. Rover motion, the hidden obstacle, suit telemetry and the rover\'s mass, speed and battery are simulated or placeholder values.',
+    src_g_terrain: 'Terrain and imagery', src_g_mission: 'Rover positions and photographs', src_g_env: 'Radiation and weather', src_g_crew: 'Crew and rover limits', src_g_method: 'Method, software and our own work', src_no_link: 'no public link',
     intro_tag: 'A rover walks the route first. Then the astronaut does.', intro_begin: 'Begin mission planning',
     intro_foot: 'NASA Space Apps Challenge 2026 · real HiRISE, CTX and THEMIS data · rover motion simulated',
     prompt_rover: 'The rover that goes first',
@@ -65,7 +68,10 @@ const I18N = {
     r_obstacle: 'unmapped obstacle on the return leg', r_none: 'Slope, oxygen and battery are within limits.',
   },
   tr: {
-    tab_path: 'Patika seçici', tab_astronaut: 'Astronot durumu', tab_tablet: 'Tablet görüntüsü', tab_rover: 'Öncü rover',
+    tab_path: 'Patika seçici', tab_astronaut: 'Astronot durumu', tab_tablet: 'Tablet görüntüsü', tab_rover: 'Öncü rover', tab_sources: 'Kaynakça',
+    prompt_sources: 'Her sayının geldiği yer',
+    src_lead: 'Bu ekranlardaki her şey ya aşağıdaki kaynaklardan gelen ölçülmüş veridir ya da benzetim olarak etiketlenmiştir. Rover hareketi, gizli engel, giysi telemetrisi ve rover\'ın kütle, hız ve batarya değerleri benzetim ya da varsayımdır.',
+    src_g_terrain: 'Arazi ve görüntü', src_g_mission: 'Rover konumları ve fotoğraflar', src_g_env: 'Radyasyon ve hava', src_g_crew: 'Mürettebat ve rover sınırları', src_g_method: 'Yöntem, yazılım ve kendi işimiz', src_no_link: 'herkese açık link yok',
     intro_tag: 'Yolu önce rover yürür. Sonra astronot.', intro_begin: 'Görev planlamaya başla',
     intro_foot: 'NASA Space Apps Challenge 2026 · gerçek HiRISE, CTX ve THEMIS verisi · rover hareketi benzetim',
     prompt_rover: 'Yola ilk çıkan rover',
@@ -130,6 +136,55 @@ let lang = 'en';
 const t = (key, vars = {}) =>
   (I18N[lang][key] ?? I18N.en[key] ?? key).replace(/\{(\w+)\}/g, (_, n) => vars[n]);
 const $ = (id) => document.getElementById(id);
+
+/* ───────────────────────── sources ───────────────────────── */
+// [group, name, credit, { en, tr } use, link]
+const SOURCES = [
+  ['terrain', 'Mars 2020 Terrain Relative Navigation HiRISE DTM Mosaic', 'USGS Astrogeology Science Center · 1 m, resampled to 5 m',
+    { en: '3D terrain, slope and every route calculation.', tr: '3B arazi, eğim ve bütün rota hesapları.' }, 'https://doi.org/10.5066/P9REJ9JN'],
+  ['terrain', 'Mars 2020 Science Investigation CTX Orthomosaic', 'USGS Astrogeology Science Center · 5 m · public domain',
+    { en: 'The image draped on the terrain. Single-band, tinted to Mars colours for display.', tr: 'Arazinin üstüne giydirilen görüntü. Tek bantlı; gösterim için Mars renklerine boyandı.' }, 'https://astrogeology.usgs.gov/search/map/mars_2020_science_investigation_ctx_dem_mosaic'],
+  ['terrain', 'THEMIS-derived Thermal Inertia of Jezero Crater', 'Edwards, C. S. and Buz, J. (2021) · 100 m · CC BY 4.0',
+    { en: 'Ground type: loose sand or firm rock. Feeds the most efficient route.', tr: 'Zemin türü: gevşek kum ya da sert kaya. En verimli rotayı besler.' }, 'https://doi.org/10.5281/zenodo.4931348'],
+  ['terrain', 'Viking MDIM 2.1 colour mosaic', 'NASA Mars Trek',
+    { en: 'The rotating Mars globe.', tr: 'Dönen Mars küresi.' }, 'https://trek.nasa.gov/mars/'],
+  ['mission', 'Perseverance localized rover stops', 'NASA/JPL-Caltech · Mars 2020 mission',
+    { en: 'Coordinates of the six science stops, and the check of our grid against 388 rover positions.', tr: 'Altı bilim durağının koordinatları ve ızgaramızın 388 rover konumuyla doğrulanması.' }, 'https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json'],
+  ['mission', 'Mars 2020 raw images, Navcam', 'NASA/JPL-Caltech · sols 180, 502, 565, 652, 736, 770',
+    { en: 'The arrival photographs in Tablet view.', tr: 'Tablet görüntüsündeki varış fotoğrafları.' }, 'https://mars.nasa.gov/mars2020/multimedia/raw-images/'],
+  ['mission', 'Apollo 11 photograph AS11-40-5903', 'NASA · public domain',
+    { en: 'The astronaut image in Astronaut status.', tr: 'Astronot durumu ekranındaki astronot görseli.' }, 'https://images.nasa.gov/details/as11-40-5903'],
+  ['env', 'MSL RAD reduced data records', 'NASA PDS Planetary Plasma Interactions node · MSL-M-RAD-3-RDR-V1.0',
+    { en: '328 dose-rate measurements by Curiosity in Gale crater, 2012 to 2026. Not Jezero.', tr: 'Curiosity\'nin Gale kraterinde 2012–2026 arasındaki 328 doz hızı ölçümü. Jezero değil.' }, 'https://pds-ppi.igpp.ucla.edu/data/MSL-M-RAD-3-RDR-V1.0/'],
+  ['env', 'Mars\' surface radiation environment measured with Curiosity', 'Hassler, D. M., et al. (2014) · Science 343',
+    { en: 'Published reference for the radiation measurements.', tr: 'Radyasyon ölçümleri için yayımlanmış başvuru kaynağı.' }, 'https://doi.org/10.1126/science.1244797'],
+  ['env', 'Mars 2020 MEDA weather feed', 'NASA/JPL-Caltech/CAB · sols 1130 to 1133',
+    { en: 'Air temperature and pressure measured in Jezero.', tr: 'Jezero\'da ölçülen hava sıcaklığı ve basınç.' }, 'https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json'],
+  ['crew', 'xEMU spacesuit testing', 'NASA Technical Reports Server',
+    { en: 'The 8 hour suit duration behind the oxygen check.', tr: 'Oksijen kontrolündeki 8 saatlik giysi süresi.' }, 'https://ntrs.nasa.gov/citations/20240004887'],
+  ['crew', 'Apollo lunar surface consumables document', 'NASA · Apollo Lunar Surface Journal',
+    { en: 'Planned walking speed of 3.3 km/h and the 20% walk-back reserve. Measured on the Moon.', tr: '3,3 km/saat planlanan yürüme hızı ve %20 dönüş payı. Ay\'da ölçüldü.' }, 'https://www.nasa.gov/wp-content/uploads/static/history/alsj/19790073512_1979073512.pdf'],
+  ['crew', 'Perseverance rover components', 'NASA Science',
+    { en: 'Reference for rover slope limits: 45° without tipping, drivers avoid more than 30°.', tr: 'Rover eğim sınırları için başvuru: 45° devrilmeden dayanım, sürücüler 30° üstünden kaçınır.' }, 'https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/'],
+  ['method', 'D* Lite', 'Koenig, S. and Likhachev, M. (2002) · AAAI Conference on Artificial Intelligence',
+    { en: 'The route planner, including the repair when the rover meets an unmapped obstacle.', tr: 'Rota planlayıcı; rover haritada olmayan engelle karşılaşınca yapılan onarım dahil.' }, null],
+  ['method', 'Scout rover CAD model', 'SafePath team',
+    { en: 'Our own design. Dimensions are read from this model.', tr: 'Kendi tasarımımız. Ölçüler bu modelden okundu.' }, null],
+  ['method', 'three.js, NumPy, SciPy, Pillow, Matplotlib, trimesh, cascadio', 'Open-source software · MIT and BSD-style licences',
+    { en: '3D rendering in the browser and the data pipeline.', tr: 'Tarayıcıda 3B çizim ve veri hattı.' }, 'https://threejs.org/'],
+  ['method', 'Newsreader, IBM Plex Sans, IBM Plex Mono', 'SIL Open Font License',
+    { en: 'Typefaces.', tr: 'Yazı tipleri.' }, 'https://fonts.google.com/'],
+];
+function drawSources() {
+  let html = `<p class="src-lead">${t('src_lead')}</p>`, group = '';
+  for (const [g, name, credit, use, link] of SOURCES) {
+    if (g !== group) { group = g; html += `<p class="eyebrow src-group">${t('src_g_' + g)}</p>`; }
+    html += `<div class="src-row"><p class="src-name">${name}<small>${credit}</small></p><p class="src-use">${use[lang]}</p>` +
+      (link ? `<a class="src-link" href="${link}" target="_blank" rel="noopener">${link.replace(/^https?:\/\//, '')}</a>`
+            : `<span class="src-none">${t('src_no_link')}</span>`) + '</div>';
+  }
+  $('sources').innerHTML = html;
+}
 
 /* ───────────────────────── state ───────────────────────── */
 const COLORS = { fastest: '#f2b33d', safest: '#5fd0b5', efficient: '#8fa8ff' };
@@ -568,7 +623,7 @@ function refreshTarget(reframe) {
   if (reframe) frameRoute();
 }
 function setPrompt() {
-  const key = state.view === 'astronaut' ? 'prompt_astronaut' : state.view === 'tablet' ? 'prompt_tablet' : state.view === 'rover' ? 'prompt_rover'
+  const key = state.view === 'astronaut' ? 'prompt_astronaut' : state.view === 'tablet' ? 'prompt_tablet' : state.view === 'rover' ? 'prompt_rover' : state.view === 'sources' ? 'prompt_sources'
     : state.phase === 'terrain' && state.target ? 'prompt_routes' : 'prompt_choose';
   $('prompt').textContent = t(key, { target: state.target?.name });
 }
@@ -683,7 +738,7 @@ function setLang(next) {
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   $('sound').firstElementChild.textContent = t(state.sound ? 'sound_on' : 'sound_off');
   $('go').textContent = t(state.phase === 'terrain' ? 'coords_show' : 'coords_go');
-  fillTargets(); setLegend(); setPrompt();
+  fillTargets(); setLegend(); setPrompt(); drawSources();
   if (state.target && state.phase === 'terrain') { drawLedger(); }
   drawPanels();
 }
@@ -703,6 +758,9 @@ function frame(now) {
     renderer.render(globeScene, globeCam);
   } else if (state.view === 'astronaut') {
     loneStars.rotation.y += dt * 0.01; stepVitals(dt, now);
+    renderer.render(starScene, globeCam);
+  } else if (state.view === 'sources') {
+    loneStars.rotation.y += dt * 0.006;
     renderer.render(starScene, globeCam);
   } else if (state.view === 'tablet' && state.target) {
     stepDrive(dt);
@@ -731,7 +789,7 @@ async function start() {
   buildLand();
   const [lon, lat] = mission.base.lonlat;
   $('start-lat').value = lat.toFixed(5); $('start-lon').value = lon.toFixed(5);
-  fillTargets();
+  fillTargets(); drawSources();
   const pick = () => {
     const tg = mission.targets.find((x) => x.id === $('target-select').value);
     $('end-lat').value = tg.lonlat[1].toFixed(5); $('end-lon').value = tg.lonlat[0].toFixed(5);
