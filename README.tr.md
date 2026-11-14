@@ -3,6 +3,8 @@
 **Önce rover, sonra insan.** NASA Space Apps Challenge 2026 için Jezero kraterinde
 astronot yüzey keşfine yönelik katmanlı Mars haritası ve rota planlayıcı.
 
+**Canlı site: https://aliandacerdass.github.io/NASA_Spaceapp26/** (indirmeden, tarayıcıdan doğrudan açılır)
+
 Asıl doküman İngilizce: [README.md](README.md). Bu dosya ekip için kısa bir rehberdir.
 
 ![SafePath açılış ekranı](docs/images/01-intro.jpg)
@@ -16,6 +18,8 @@ eder; rover yörünge haritasında görünmeyen bir engelle karşılaşınca rot
 ile onarır.
 
 ## Siteyi kendi bilgisayarında açmak
+
+Siteyi yalnız görmek için yukarıdaki canlı link yeterli. Kodu kurcalamak istersen:
 
 1. Sayfanın üstündeki yeşil **Code** düğmesine bas, **Download ZIP** seç ve
    indirilen dosyayı aç.

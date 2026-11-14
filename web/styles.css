@@ -309,6 +309,7 @@ dd small { font: 400 12px/1 var(--mono); letter-spacing: 0; color: var(--muted);
   .view { position: relative; inset: auto; min-height: calc(100dvh - 116px); }
   .coords, .layers, .ledger, .log, .spec { position: relative; inset: auto; transform: none; width: auto; margin: 12px; }
   #view-path.is-active { display: flex; flex-direction: column; }
+  #view-path .coords { margin-top: 46dvh; }  /* the map stays visible above the panels */
   #view-path .ledger { margin-top: auto; }
   .route { grid-template-columns: 1fr 1fr 1fr; }
   .route canvas, .why, .route-name { grid-column: 1 / -1; }

@@ -3,6 +3,8 @@
 **Rover first, then human.** A layered Mars map and route planner for astronaut
 surface exploration in Jezero crater. NASA Space Apps Challenge 2026.
 
+**Live demo: https://aliandacerdass.github.io/NASA_Spaceapp26/**
+
 Türkçe özet: [README.tr.md](README.tr.md)
 
 ![SafePath opening screen](docs/images/01-intro.jpg)
@@ -181,7 +183,8 @@ quoted as results. Distances and slopes come directly from the data.
 
 ## Run it
 
-Open the interface (no build step, no dependencies):
+The interface is live at https://aliandacerdass.github.io/NASA_Spaceapp26/ (published from `web/` on every push).
+To open it locally (no build step, no dependencies):
 
 ```
 python -m http.server 8765 --directory web
