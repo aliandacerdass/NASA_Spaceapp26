@@ -50,13 +50,18 @@ const I18N = {
     log_home_detour: 'Back at base. Detour +{d} m, recorded for the crew.',
     log_home: 'Back at base. No obstacle met on this route.',
     vitals_title: 'Suit telemetry', simulated: 'simulated',
-    v_breath: 'Breathing', v_heart: 'Heart rate', v_oxygen: 'Oxygen', v_battery: 'Suit battery', per_min: '/min',
+    v_breath: 'Breathing', v_heart: 'Heart rate', v_oxygen: 'Suit O₂ remaining', v_battery: 'Suit battery', per_min: '/min',
+    v_time: 'EVA elapsed', eva_play: 'Play the walk', eva_playing: 'Walking · accelerated playback', eva_replay: 'Play the walk again',
+    vitals_note: 'Oxygen and suit battery are drawn down over the 8 h suit design duration as the walk time passes. Heart rate and breathing are example values: at rest, then walking.',
+    clock: 'Accelerated playback · mission time T+{h}:{m} at the placeholder rover speed',
+    real_title: 'For scale: Opportunity on Mars', real_speed: 'Driving speed', real_rate: 'With hazard avoidance', real_mh: 'm/hour', real_slope: 'Slope not recommended above',
+    real_note: 'At Opportunity\'s 30 m/hour, the {km} km safest route to {target} is about {h} hours of driving each way. A scout like this sets out days before the walk; the playback here is accelerated.',
     sound_on: 'Breathing sound on', sound_off: 'Breathing sound off',
     photo_credit: 'Apollo 11, AS11-40-5903. NASA.',
     forecast_title: 'Expected at end of traverse', forecast_route: '{target}, {route} route',
     f_oxygen: 'Oxygen left', f_walk: 'Round trip on foot', f_battery: 'Rover battery left', f_dose: 'Radiation dose', hours: 'h',
-    verdict_ok: 'Within limits. The {r}% oxygen reserve is kept.',
-    verdict_risk: 'Outside limits. The {r}% oxygen reserve is not kept.',
+    verdict_ok: 'Projected O₂ reserve retained: more than {r}% left at the end.',
+    verdict_risk: 'Projected O₂ reserve breached: less than {r}% left at the end.',
     forecast_note: 'Oxygen uses an 8 h suit and Apollo walking speed. Rover battery uses placeholder numbers. Radiation is the mean absorbed dose rate Curiosity measured in Gale crater, 2012 to 2026.',
     no_target: 'Choose a target in Path selector first.',
     t_title: 'Along the route', t_slope: 'Slope °', t_elev: 'Elevation m', t_ground: 'Ground (TI)',
@@ -116,13 +121,18 @@ const I18N = {
     log_home_detour: 'Üsse dönüldü. Sapma +{d} m, mürettebat için kaydedildi.',
     log_home: 'Üsse dönüldü. Bu rotada engelle karşılaşılmadı.',
     vitals_title: 'Giysi telemetrisi', simulated: 'benzetim',
-    v_breath: 'Nefes', v_heart: 'Kalp ritmi', v_oxygen: 'Oksijen', v_battery: 'Giysi bataryası', per_min: '/dk',
+    v_breath: 'Nefes', v_heart: 'Kalp ritmi', v_oxygen: 'Kalan giysi O₂', v_battery: 'Giysi bataryası', per_min: '/dk',
+    v_time: 'Geçen yürüyüş süresi', eva_play: 'Yürüyüşü oynat', eva_playing: 'Yürüyor · hızlandırılmış', eva_replay: 'Yürüyüşü yeniden oynat',
+    vitals_note: 'Oksijen ve giysi bataryası, yürüyüş süresi ilerledikçe 8 saatlik giysi tasarım süresine göre azalır. Kalp ritmi ve nefes örnek değerlerdir: dinlenmede, sonra yürürken.',
+    clock: 'Hızlandırılmış oynatma · görev süresi T+{h}:{m} (varsayım rover hızıyla)',
+    real_title: 'Ölçek için: Mars\'ta Opportunity', real_speed: 'Sürüş hızı', real_rate: 'Engelden kaçınarak', real_mh: 'm/saat', real_slope: 'Önerilmeyen eğim',
+    real_note: 'Opportunity\'nin saatte 30 metresiyle, {target} hedefine {km} km\'lik en güvenli rota tek yön yaklaşık {h} saat sürüş demek. Böyle bir öncü, yürüyüşten günler önce yola çıkar; buradaki oynatma hızlandırılmıştır.',
     sound_on: 'Nefes sesi açık', sound_off: 'Nefes sesi kapalı',
     photo_credit: 'Apollo 11, AS11-40-5903. NASA.',
     forecast_title: 'Yürüyüş sonunda beklenen', forecast_route: '{target}, {route} rota',
     f_oxygen: 'Kalan oksijen', f_walk: 'Yürüyerek gidiş dönüş', f_battery: 'Kalan rover bataryası', f_dose: 'Radyasyon dozu', hours: 'sa',
-    verdict_ok: 'Sınırlar içinde. %{r} oksijen payı korunuyor.',
-    verdict_risk: 'Sınırların dışında. %{r} oksijen payı korunmuyor.',
+    verdict_ok: 'Öngörülen O₂ payı korunuyor: yürüyüş sonunda %{r}\'den fazlası kalıyor.',
+    verdict_risk: 'Öngörülen O₂ payı aşılıyor: yürüyüş sonunda %{r}\'den azı kalıyor.',
     forecast_note: 'Oksijen 8 saatlik giysi ve Apollo yürüme hızına göre. Rover bataryası varsayım değerlerle. Radyasyon, Curiosity\'nin Gale kraterinde 2012–2026 arasında ölçtüğü ortalama soğurulan doz hızı.',
     no_target: 'Önce Patika seçici\'den bir hedef seçin.',
     t_title: 'Yol boyu değerler', t_slope: 'Eğim °', t_elev: 'Yükseklik m', t_ground: 'Zemin (IA)',
@@ -167,7 +177,9 @@ const SOURCES = [
   ['crew', 'xEMU spacesuit testing', 'NASA Technical Reports Server',
     { en: 'The 8 hour suit duration behind the oxygen check.', tr: 'Oksijen kontrolündeki 8 saatlik giysi süresi.' }, 'https://ntrs.nasa.gov/citations/20240004887'],
   ['crew', 'Apollo lunar surface consumables document', 'NASA · Apollo Lunar Surface Journal',
-    { en: 'Planned walking speed of 3.3 km/h and the 20% walk-back reserve. Measured on the Moon.', tr: '3,3 km/saat planlanan yürüme hızı ve %20 dönüş payı. Ay\'da ölçüldü.' }, 'https://www.nasa.gov/wp-content/uploads/static/history/alsj/19790073512_1979073512.pdf'],
+    { en: 'Planned walking speed of 3.3 km/h and the 20% walk-back reserve. Measured on the Moon. NASA\'s original page has moved; the link is an archived copy.', tr: '3,3 km/saat planlanan yürüme hızı ve %20 dönüş payı. Ay\'da ölçüldü. NASA\'nın özgün sayfası taşındı; link arşiv kopyasıdır.' }, 'https://web.archive.org/web/20250721201910/https://www.nasa.gov/wp-content/uploads/static/history/alsj/19790073512_1979073512.pdf'],
+  ['crew', 'Mars Exploration Rover Surface Operations: Driving Opportunity at Meridiani Planum', 'Biesiadecki, J. J., et al. (2005) · NASA Jet Propulsion Laboratory',
+    { en: 'A real rover for scale: 3.75 cm/s driving speed, 30 m/hour with hazard avoidance, driving above 30° not recommended.', tr: 'Ölçek için gerçek bir rover: 3,75 cm/s sürüş hızı, engelden kaçınarak saatte 30 m, 30° üstünde sürüş önerilmiyor.' }, 'https://www-robotics.jpl.nasa.gov/media/documents/biesiadecki_driving05.pdf'],
   ['crew', 'Perseverance rover components', 'NASA Science',
     { en: 'Reference for rover slope limits: 45° without tipping, drivers avoid more than 30°.', tr: 'Rover eğim sınırları için başvuru: 45° devrilmeden dayanım, sürücüler 30° üstünden kaçınır.' }, 'https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/'],
   ['method', 'D* Lite', 'Koenig, S. and Likhachev, M. (2002) · AAAI Conference on Artificial Intelligence',
@@ -196,7 +208,7 @@ const COLORS = { fastest: '#f2b33d', safest: '#5fd0b5', efficient: '#8fa8ff' };
 const SIZE = 1000;   // world units across the mission area (1 unit = 10 m)
 const RELIEF = 2;    // vertical exaggeration
 const JEZERO = { lat: 18.47, lon: 77.41 };
-const state = { view: 'path', phase: 'globe', target: null, routeId: 'safest', busy: false,
+const state = { view: 'path', phase: 'globe', target: null, routeId: 'safest', busy: false, clockMin: 0,
                 sound: true, obstacleMet: new Set(), drive: null };
 let mission, height;
 
@@ -484,7 +496,12 @@ function scenarioApplies() {
   return state.target.id === mission.scenario.target && state.routeId === mission.scenario.profile;
 }
 
+function drawRealNote() {
+  const tg = state.target ?? mission.targets[0], r = tg.routes.find((q) => q.id === 'safest');
+  $('spec-real').textContent = t('real_note', { km: (r.distance_m / 1000).toFixed(1), target: tg.name, h: Math.round(r.distance_m / 30) });
+}
 function drawPanels() {
+  drawRealNote();
   if (!state.target) {
     $('f-route').textContent = t('no_target'); $('t-route').textContent = t('no_target');
     return;
@@ -529,14 +546,17 @@ function log(key, vars, warn) {
   $('log').appendChild(p); $('log').hidden = false;
   while ($('log').children.length > 4) $('log').firstChild.remove();
 }
-function drive(points, seconds) {
+function drive(points, seconds, minutes = 0) {
   const cum = [0];
   for (let i = 1; i < points.length; i++) cum.push(cum[i - 1] + points[i].distanceTo(points[i - 1]));
-  return new Promise((done) => { state.drive = { points, cum, seconds, t: 0, done }; });
+  return new Promise((done) => { state.drive = { points, cum, seconds, minutes, t: 0, done }; });
 }
 function stepDrive(dt) {
   const d = state.drive; if (!d) return;
+  const before = d.t;
   d.t = Math.min(d.t + dt / d.seconds, 1);
+  state.clockMin += (d.t - before) * d.minutes;
+  $('clock').textContent = t('clock', { h: Math.floor(state.clockMin / 60), m: String(Math.floor(state.clockMin % 60)).padStart(2, '0') });
   const e = d.t < 0.5 ? 2 * d.t * d.t : 1 - 2 * (1 - d.t) * (1 - d.t);
   const s = e * d.cum[d.cum.length - 1];
   let i = 1; while (i < d.cum.length - 1 && d.cum[i] < s) i++;
@@ -559,14 +579,16 @@ async function sendRover() {
   const r = route(), sc = mission.scenario, key = state.target.id + r.id;
   const out = toPoints(r.cells, 1.5, 2);
   rover.visible = true; rover.position.copy(out[0]);
+  state.clockMin = 0; $('clock').hidden = false;
   log('log_depart', { route: t(r.id).toLowerCase() });
-  await drive(out, 7);
+  await drive(out, 7, r.rover_time_min);
   log('log_arrive', { target: state.target.name, km: (r.distance_m / 1000).toFixed(2), deg: r.max_slope_deg.toFixed(1) });
   await wait(900);
   log('log_return');
   if (scenarioApplies()) {
     const hit = sc.driven_cells.findIndex((c) => c[0] === sc.first_detection_cell[0] && c[1] === sc.first_detection_cell[1]);
-    await drive(toPoints(sc.driven_cells.slice(0, hit + 1), 1.5, 2), 2.6);
+    const back = r.rover_time_min * sc.driven_distance_m / sc.planned_distance_m, share = hit / sc.driven_cells.length;
+    await drive(toPoints(sc.driven_cells.slice(0, hit + 1), 1.5, 2), 2.6, back * share);
     obstacle.visible = true; state.obstacleMet.add(key);
     log('log_obstacle', {}, true);
     await wait(1100);
@@ -577,10 +599,10 @@ async function sendRover() {
     detour.renderOrder = 4; extraGroup.add(detour); reveal(detour, '#ffffff', 0, 1.1);
     log('log_replan', { n: sc.replans, s: sc.repair_total_s.toFixed(2), f: sc.fresh_plan_at_first_detection_s.toFixed(2) });
     await wait(900);
-    await drive(toPoints(sc.driven_cells.slice(hit), 1.5, 2), 6);
+    await drive(toPoints(sc.driven_cells.slice(hit), 1.5, 2), 6, back * (1 - share));
     log('log_home_detour', { d: sc.driven_distance_m - sc.planned_distance_m });
   } else {
-    await drive(out.slice().reverse(), 7);
+    await drive(out.slice().reverse(), 7, r.rover_time_min);
     log('log_home');
   }
   state.busy = false; $('send').disabled = false; $('send').textContent = t('send_rover');
@@ -624,7 +646,7 @@ const metres = (lat1, lon1, lat2, lon2) => {
   return Math.hypot((lat2 - lat1) * k * R, (lon2 - lon1) * k * R * Math.cos(lat1 * k));
 };
 function refreshTarget(reframe) {
-  drawRoutes(reframe); drawLedger(reframe); drawPanels(); setPrompt();
+  drawRoutes(reframe); drawLedger(reframe); drawPanels(); setPrompt(); resetEva();
   if (reframe) frameRoute();
 }
 function setPrompt() {
@@ -684,18 +706,24 @@ function sound(on) {
   if (!audio) return;
   if (on) { audio.ctx.resume(); breathe(); breathTimer = setInterval(breathe, 4600); } else audio.ctx.suspend();
 }
-let vitalsClock = 0, suitOxygen = 96, suitBattery = 91, beat = 0;
-function stepVitals(dt, now) {
-  vitalsClock += dt;
-  if (vitalsClock > 1) {
-    vitalsClock = 0;
-    suitOxygen = Math.max(suitOxygen - 0.004, 20); suitBattery = Math.max(suitBattery - 0.003, 20);
-    $('v-heart').textContent = Math.round(78 + 4 * Math.sin(now / 9000) + (Math.random() - 0.5) * 3);
-    $('v-breath').textContent = 13 + (Math.random() < 0.2 ? 1 : 0);
-    $('v-oxygen').textContent = suitOxygen.toFixed(1); $('v-battery').textContent = suitBattery.toFixed(1);
+// The walk is replayed on an accelerated clock; suit consumables follow the elapsed walk time.
+const eva = { p: 0, playing: false };
+const EVA_SECONDS = 18;
+let beat = 0;
+function resetEva() { eva.p = 0; eva.playing = false; $('eva-play').textContent = t('eva_play'); }
+function stepVitals(dt) {
+  if (eva.playing) {
+    eva.p = Math.min(eva.p + dt / EVA_SECONDS, 1);
+    if (eva.p >= 1) { eva.playing = false; $('eva-play').textContent = t('eva_replay'); }
   }
+  const hours = state.target ? eva.p * route().round_trip_walk_h : 0;
+  const left = Math.max(100 - hours / mission.crew.oxygen_h * 100, 0);
+  const heart = eva.playing ? 100 : 76;
+  $('v-time').textContent = `${Math.floor(hours)}:${String(Math.floor(hours % 1 * 60)).padStart(2, '0')}`;
+  $('v-heart').textContent = heart; $('v-breath').textContent = eva.playing ? 20 : 14;
+  $('v-oxygen').textContent = left.toFixed(1); $('v-battery').textContent = left.toFixed(1);
   const c = $('ecg'), x = c.getContext('2d'), w = c.width, h = c.height;
-  beat += dt * 1.3;
+  beat += dt * heart / 60;
   x.clearRect(0, 0, w, h); x.beginPath(); x.strokeStyle = '#c8693b'; x.lineWidth = 2;
   for (let px = 0; px < w; px += 2) {
     const p = ((px / 150 + beat) % 1 + 1) % 1;
@@ -742,6 +770,7 @@ function setLang(next) {
   document.querySelectorAll('[data-lang]').forEach((b) => b.classList.toggle('is-active', b.dataset.lang === next));
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   $('sound').firstElementChild.textContent = t(state.sound ? 'sound_on' : 'sound_off');
+  $('eva-play').textContent = t(eva.playing ? 'eva_playing' : eva.p >= 1 ? 'eva_replay' : 'eva_play');
   $('go').textContent = t(state.phase === 'terrain' ? 'coords_show' : 'coords_go');
   fillTargets(); setLegend(); setPrompt(); drawSources();
   if (state.target && state.phase === 'terrain') { drawLedger(); }
@@ -762,7 +791,7 @@ function frame(now) {
     siteMark.material.opacity = 0.55 + 0.45 * Math.sin(now / 350);
     renderer.render(globeScene, globeCam);
   } else if (state.view === 'astronaut') {
-    loneStars.rotation.y += dt * 0.01; stepVitals(dt, now);
+    loneStars.rotation.y += dt * 0.01; stepVitals(dt);
     renderer.render(starScene, globeCam);
   } else if (state.view === 'sources') {
     loneStars.rotation.y += dt * 0.006;
@@ -806,6 +835,10 @@ async function start() {
   $('back').addEventListener('click', () => { if (!state.busy) setPhase('globe'); });
   $('layer-slope').addEventListener('change', (e) => { overlaySlope.visible = e.target.checked; setLegend(); });
   $('layer-thermal').addEventListener('change', (e) => { overlayThermal.visible = e.target.checked; setLegend(); });
+  $('eva-play').addEventListener('click', () => {
+    if (!state.target) return;
+    eva.p = 0; eva.playing = true; $('eva-play').textContent = t('eva_playing');
+  });
   $('sound').addEventListener('click', () => {
     state.sound = !state.sound; $('sound').setAttribute('aria-pressed', state.sound);
     $('sound').firstElementChild.textContent = t(state.sound ? 'sound_on' : 'sound_off'); sound(state.sound);
@@ -814,6 +847,7 @@ async function start() {
   document.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => setLang(b.dataset.lang)));
   new ResizeObserver(fit).observe(document.body);
   window.addEventListener('resize', () => { fit(); if (state.target && state.phase === 'terrain') drawLedger(); });
+  setLang(lang);
   setView('path');
   requestAnimationFrame(frame);
 }

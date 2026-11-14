@@ -171,7 +171,9 @@ including replanning after hidden obstacles appear.
 | Rover mass, speed, battery, power use | Placeholders until the rover design is final |
 | Thermal inertia to rolling resistance mapping | Placeholder |
 | Crew walking speed, EVA duration, reserve | Sourced, but measured for lunar suits |
-| Suit telemetry (heart rate, breathing) | Simulated |
+| Suit oxygen and battery | Drawn down over the 8 hour suit design duration as the walk time passes |
+| Heart rate and breathing | Example values, at rest and walking |
+| Playback speed | Accelerated. At Opportunity's 30 m/hour the 4.1 km route is about 137 hours of driving each way |
 | Basemap colour | Display tint; the CTX camera records a single band |
 
 Times and energy values depend on the placeholder rover numbers and should not be
@@ -268,7 +270,12 @@ or brand elements.
 - NASA. Perseverance rover components.
   https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/
 - NASA. Apollo consumables document (planned walking speed, walk-back reserve).
-  https://www.nasa.gov/wp-content/uploads/static/history/alsj/19790073512_1979073512.pdf
+  https://web.archive.org/web/20250721201910/https://www.nasa.gov/wp-content/uploads/static/history/alsj/19790073512_1979073512.pdf
+  (archived copy; NASA's original page has moved)
+- Biesiadecki, J. J., et al. (2005). Mars Exploration Rover Surface Operations:
+  Driving Opportunity at Meridiani Planum. NASA Jet Propulsion Laboratory. Real rover
+  for scale: 3.75 cm/s, 30 m/hour with hazard avoidance, above 30 degrees not recommended.
+  https://www-robotics.jpl.nasa.gov/media/documents/biesiadecki_driving05.pdf
 - NASA. xEMU testing (8 hour EVA design requirement).
   https://ntrs.nasa.gov/citations/20240004887
 - Koenig, S., and Likhachev, M. (2002). D* Lite. Proceedings of the AAAI

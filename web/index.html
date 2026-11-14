@@ -89,6 +89,7 @@
         <button type="button" class="back" id="back" data-i18n="back_globe">← Mars</button>
       </div>
 
+      <p class="clock" id="clock" hidden></p>
       <div class="log" id="log" aria-live="polite" hidden></div>
 
       <div class="ledger glass" id="ledger" hidden>
@@ -112,13 +113,18 @@
         <div class="vitals glass">
           <p class="eyebrow"><span data-i18n="vitals_title">Suit telemetry</span> <span class="sim" data-i18n="simulated">simulated</span></p>
           <dl>
+            <div><dt data-i18n="v_time">EVA elapsed</dt><dd><span id="v-time">0:00</span> <small data-i18n="hours">h</small></dd></div>
             <div><dt data-i18n="v_breath">Breathing</dt><dd><span id="v-breath">13</span> <small data-i18n="per_min">/min</small></dd></div>
             <div><dt data-i18n="v_heart">Heart rate</dt><dd><span id="v-heart">78</span> <small>bpm</small></dd></div>
             <div><dt data-i18n="v_oxygen">Oxygen</dt><dd><span id="v-oxygen">96.0</span> <small>%</small></dd></div>
             <div><dt data-i18n="v_battery">Suit battery</dt><dd><span id="v-battery">91.0</span> <small>%</small></dd></div>
           </dl>
           <canvas id="ecg" width="640" height="90" aria-hidden="true"></canvas>
-          <button class="sound" id="sound" aria-pressed="true"><span data-i18n="sound_on">Breathing sound on</span></button>
+          <div class="vitals-actions">
+            <button class="sound" id="eva-play" data-i18n="eva_play">Play the walk</button>
+            <button class="sound" id="sound" aria-pressed="true"><span data-i18n="sound_on">Breathing sound on</span></button>
+          </div>
+          <p class="fine" data-i18n="vitals_note"></p>
         </div>
 
         <div class="forecast glass">
@@ -188,6 +194,13 @@
           <div><dt data-i18n="spec_clear">Ground clearance</dt><dd>≈ 230 <small>mm</small></dd></div>
           <div><dt data-i18n="spec_slope">Slope limit, safe limit</dt><dd>30°, 15°</dd></div>
         </dl>
+        <p class="eyebrow spec-sub" data-i18n="real_title">For scale: Opportunity on Mars</p>
+        <dl>
+          <div><dt data-i18n="real_speed">Driving speed</dt><dd>3.75 <small>cm/s</small></dd></div>
+          <div><dt data-i18n="real_rate">With hazard avoidance</dt><dd>30 <small data-i18n="real_mh">m/hour</small></dd></div>
+          <div><dt data-i18n="real_slope">Slope not recommended above</dt><dd>30°</dd></div>
+        </dl>
+        <p class="spec-real" id="spec-real"></p>
         <p class="fine" data-i18n="spec_note">Dimensions are read from the team's CAD model, which is what you see turning here. Mass, speed and battery are not final, so route times and energy use placeholders.</p>
         <p class="fine" data-i18n="spec_scale">A 12.5 cm wheel is stopped by rocks no orbiter can see. That is why the rover goes first.</p>
       </div>
