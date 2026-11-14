@@ -44,7 +44,7 @@ landing site, Octavia E. Butler Landing.
 | Layer | Source | Resolution | Use |
 |---|---|---|---|
 | Elevation | USGS Astrogeology, Mars 2020 Terrain Relative Navigation HiRISE DTM Mosaic | 1 m, resampled to 5 m | 3D terrain, slope, routing |
-| Optical image | USGS Astrogeology, Mars 2020 Science Investigation CTX Orthomosaic | 5 m | Basemap draped on the terrain |
+| Optical image | USGS Astrogeology, Mars 2020 Science Investigation CTX Orthomosaic | 5 m | Basemap draped on the terrain. It is a single-band image, tinted to Mars colours for display |
 | Thermal inertia | Edwards and Buz (2021), THEMIS-derived Thermal Inertia of Jezero Crater | 100 m | Ground type: loose sand or firm rock |
 | Rover positions | NASA Mars 2020 mission, localized rover stops | per stop | Science stops, validation |
 

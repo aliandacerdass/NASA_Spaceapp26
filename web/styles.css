@@ -191,6 +191,8 @@ body:not(.started) :is(.rail, .bar, .glass, .log) { opacity: 0 !important; anima
   opacity: .7; transition: opacity .2s, background .2s;
 }
 .route:hover { opacity: .95; }
+.route.is-arriving { animation: arrive .7s both; }
+@keyframes arrive { from { opacity: 0; transform: translateX(-14px); } }
 .route.is-active { opacity: 1; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 16%, transparent), transparent 70%); }
 .route-name { display: flex; align-items: center; gap: 11px; font: 400 20px/1 var(--display); letter-spacing: -.01em; }
 .route-name i { width: 24px; height: 3px; background: var(--c); display: block; box-shadow: 0 0 12px var(--c); }

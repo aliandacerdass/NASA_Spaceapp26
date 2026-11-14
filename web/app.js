@@ -143,7 +143,8 @@ let mission, height;
 /* ───────────────────────── renderer and scenes ───────────────────────── */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setClearColor(0x0a0c11);
+renderer.setClearColor(0x07080c);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
 const loader = new THREE.TextureLoader();
 const texture = (url) => { const tx = loader.load(url); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8; return tx; };
 
@@ -155,7 +156,7 @@ function starField(radius, count) {
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  return new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xe9dfcf, size: 1.4, sizeAttenuation: false, transparent: true, opacity: 0.75 }));
+  return new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xe9dfcf, size: 1.4, sizeAttenuation: false, transparent: true, opacity: 0.75, fog: false }));
 }
 
 // Globe
@@ -189,8 +190,9 @@ landCam.position.set(120, 620, 760);
 const controls = new OrbitControls(landCam, renderer.domElement);
 controls.enableDamping = true; controls.maxPolarAngle = 1.46; controls.minDistance = 50; controls.maxDistance = 2400;
 const roverCam = new THREE.PerspectiveCamera(68, 1, 0.5, 6000);
-land.add(new THREE.HemisphereLight(0xffe6cf, 0x2a1c14, 1.15));
-const landSun = new THREE.DirectionalLight(0xfff0dc, 2.2); landSun.position.set(-600, 500, -350); land.add(landSun);
+land.add(new THREE.HemisphereLight(0xffdcc0, 0x24140c, 0.75));
+const landSun = new THREE.DirectionalLight(0xfff0dc, 3.4); landSun.position.set(-700, 360, -180); land.add(landSun);
+const HAZE = new THREE.FogExp2(0x140b07, 0.00026); land.fog = HAZE;
 const landStars = starField(4200, 2200); land.add(landStars);
 const routeGroup = new THREE.Group(), markGroup = new THREE.Group(), extraGroup = new THREE.Group();
 land.add(routeGroup, markGroup, extraGroup);
@@ -234,10 +236,29 @@ const toPoints = (cells, lift, step = 3) => {
   pts.push(world(cells[cells.length - 1], lift));
   return pts;
 };
+// Draw a tube from its start to its end over time, led by a bright point.
+function reveal(mesh, color, delay, seconds) {
+  mesh.geometry.setDrawRange(0, 0);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 12), new THREE.MeshBasicMaterial({ color }));
+  head.renderOrder = 6; head.visible = false; mesh.parent.add(head);
+  reveals.push({ mesh, head, t: -delay / seconds, seconds, total: mesh.geometry.index.count });
+}
+function stepReveals(dt) {
+  for (let i = reveals.length - 1; i >= 0; i--) {
+    const r = reveals[i]; r.t += dt / r.seconds;
+    if (r.t < 0) continue;
+    const k = Math.min(r.t, 1), e = k < 0.5 ? 2 * k * k : 1 - 2 * (1 - k) * (1 - k);
+    r.mesh.geometry.setDrawRange(0, Math.floor(e * r.total / 3) * 3);
+    r.head.visible = k < 1; r.head.position.copy(r.mesh.userData.curve.getPointAt(e));
+    if (k >= 1) { r.head.removeFromParent(); reveals.splice(i, 1); }
+  }
+}
 function tube(points, color, radius, opacity = 1) {
   const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
-  return new THREE.Mesh(new THREE.TubeGeometry(curve, points.length * 2, radius, 6),
-    new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity }));
+  const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, points.length * 2, radius, 6),
+    new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, fog: false }));
+  mesh.userData.curve = curve;
+  return mesh;
 }
 function label(text, color = '#e9dfcf') {
   const c = document.createElement('canvas'), x = c.getContext('2d');
@@ -267,10 +288,18 @@ function buildLand() {
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) pos.setY(i, (height[i] - mission.grid.height_min_m) / 10 * RELIEF);
-  geo.computeVertexNormals();
-  land.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: texture('data/basemap.jpg'), color: 0xf0b48a, roughness: 1 })));
+  // Relief shading comes from a normal map baked from the full 5 m elevation grid.
+  const normal = loader.load('data/normal.jpg'); normal.anisotropy = 8;
+  // The square of terrain dissolves into space at its edges instead of ending in a hard cut.
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, 512, 512);
+  x.filter = 'blur(14px)'; x.fillStyle = '#fff'; x.fillRect(30, 30, 452, 452);
+  const edge = new THREE.CanvasTexture(c);
+  land.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    map: texture('data/basemap.jpg'), normalMap: normal, normalMapType: THREE.ObjectSpaceNormalMap,
+    alphaMap: edge, transparent: true, roughness: 0.96, metalness: 0 })));
   const overlay = (url, lift) => {
-    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: texture(url), transparent: true, depthWrite: false }));
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: texture(url), alphaMap: edge, transparent: true, depthWrite: false }));
     mesh.position.y = lift; mesh.visible = false; land.add(mesh); return mesh;
   };
   overlayThermal = overlay('data/thermal.png', 0.5);
@@ -299,13 +328,17 @@ function buildLand() {
 /* ───────────────────────── routes on the map ───────────────────────── */
 const route = () => state.target.routes.find((r) => r.id === state.routeId);
 
-function drawRoutes() {
+const reveals = [];
+function drawRoutes(animate) {
   routeGroup.clear(); markGroup.clear(); extraGroup.clear(); obstacle.visible = false; rover.visible = false;
+  reveals.length = 0;
+  const order = { fastest: 0, efficient: 1, safest: 2 };
   for (const r of state.target.routes) {
     const on = r.id === state.routeId;
     const lift = { fastest: 3.0, efficient: 3.6, safest: 4.2 }[r.id];
     const mesh = tube(toPoints(r.cells, lift), COLORS[r.id], on ? 2.1 : 1.1, on ? 1 : 0.55);
     mesh.renderOrder = on ? 3 : 2; routeGroup.add(mesh);
+    if (animate) reveal(mesh, COLORS[r.id], order[r.id] * 0.55, 1.5);
   }
   const pin = (cell, color, text) => {
     const p = world(cell);
@@ -321,7 +354,8 @@ function frameRoute() {
   const a = world(mission.base.cell), b = world(state.target.cell);
   const mid = a.clone().lerp(b, 0.5), span = Math.max(a.distanceTo(b), 160);
   controls.target.copy(mid);
-  landCam.position.set(mid.x + span * 0.35, mid.y + span * 1.25, mid.z + span * 1.55);
+  const back = Math.max(span, 360);  // long routes need more room beside the panels
+  landCam.position.set(mid.x + back * 0.35, mid.y + back * 1.4, mid.z + back * 1.75);
 }
 
 /* ───────────────────────── ledger ───────────────────────── */
@@ -353,13 +387,14 @@ function whyText(r) {
   return pct >= 0.1 ? t('why_eff', { pct: pct.toFixed(1) }) : t('why_eff_same');
 }
 
-function drawLedger() {
+function drawLedger(animate) {
   const tg = state.target, safe = mission.grid.safe_slope_deg, box = $('routes');
   $('ledger-title').textContent = t('ledger_title', { target: tg.name, why: tg.why });
   box.innerHTML = '';
   for (const r of tg.routes) {
     const row = document.createElement('button');
-    row.className = 'route' + (r.id === state.routeId ? ' is-active' : '');
+    row.className = 'route' + (r.id === state.routeId ? ' is-active' : '') + (animate ? ' is-arriving' : '');
+    row.style.animationDelay = ({ fastest: 1.5, efficient: 2.05, safest: 2.6 })[r.id] + 's';
     row.style.setProperty('--c', COLORS[r.id]);
     const num = (v, unit, key, vars, assume) =>
       `<span class="num${assume ? ' assume' : ''}">${v} ${unit}<small>${t(key, vars)}</small></span>`;
@@ -478,7 +513,7 @@ async function sendRover() {
     let rejoin = hit;
     sc.driven_cells.forEach((c, i) => { if (i > hit && !planned.has(c[0] + ',' + c[1])) rejoin = i; });
     const detour = tube(toPoints(sc.driven_cells.slice(hit, Math.min(rejoin + 8, sc.driven_cells.length)), 5), '#ffffff', 2.2);
-    detour.renderOrder = 4; extraGroup.add(detour);
+    detour.renderOrder = 4; extraGroup.add(detour); reveal(detour, '#ffffff', 0, 1.1);
     log('log_replan', { n: sc.replans, s: sc.repair_total_s.toFixed(2), f: sc.fresh_plan_at_first_detection_s.toFixed(2) });
     await wait(900);
     await drive(toPoints(sc.driven_cells.slice(hit), 1.5, 2), 6);
@@ -528,7 +563,7 @@ const metres = (lat1, lon1, lat2, lon2) => {
   return Math.hypot((lat2 - lat1) * k * R, (lon2 - lon1) * k * R * Math.cos(lat1 * k));
 };
 function refreshTarget(reframe) {
-  drawRoutes(); drawLedger(); drawPanels(); setPrompt();
+  drawRoutes(reframe); drawLedger(reframe); drawPanels(); setPrompt();
   if (reframe) frameRoute();
 }
 function setPrompt() {
@@ -633,7 +668,7 @@ function setView(view) {
   document.querySelectorAll('.view').forEach((s) => s.classList.toggle('is-active', s.id === 'view-' + view));
   $('host-' + view).appendChild(renderer.domElement);
   const cabin = view === 'tablet';
-  land.background = cabin ? SKY : null; land.fog = cabin ? new THREE.Fog(SKY, 120, 2600) : null;
+  land.background = cabin ? SKY : null; land.fog = cabin ? new THREE.Fog(SKY, 120, 2600) : HAZE;
   landStars.visible = !cabin; controls.enabled = view === 'path';
   for (const g of [markGroup, routeGroup, extraGroup]) g.visible = !cabin;
   overlaySlope.visible = !cabin && $('layer-slope').checked;
@@ -679,7 +714,7 @@ function frame(now) {
     turntable.rotation.y += dt * 0.32;
     renderer.render(bay, bayCam);
   } else {
-    stepDrive(dt); controls.update();
+    stepDrive(dt); stepReveals(dt); controls.update();
     renderer.render(land, landCam);
   }
   requestAnimationFrame(frame);
@@ -688,8 +723,10 @@ function frame(now) {
 async function start() {
   [mission, height] = await Promise.all([
     fetch('data/mission.json').then((r) => r.json()),
-    fetch('data/height.bin').then((r) => r.arrayBuffer()).then((b) => new Float32Array(b)),
+    fetch('data/height.bin').then((r) => r.arrayBuffer()).then((b) => new Uint16Array(b)),
   ]);
+  const g = mission.grid, span = (g.height_max_m - g.height_min_m) / 65535;
+  height = Float32Array.from(height, (v) => g.height_min_m + v * span);
   buildLand();
   const [lon, lat] = mission.base.lonlat;
   $('start-lat').value = lat.toFixed(5); $('start-lon').value = lon.toFixed(5);

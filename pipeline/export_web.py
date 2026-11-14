@@ -2,8 +2,10 @@
 
 Input : data/processed/*, data/layers/*  (run the other pipeline and route scripts first)
 Output: web/data/mission.json   targets, routes with profiles, return scenario, validation
-        web/data/height.bin     Float32 little-endian, 500 x 500, metres, row 0 = north
-        web/data/basemap.jpg    CTX image on the mission grid
+        web/data/height.bin     Uint16 little-endian, 1000 x 1000, row 0 = north
+                                (0..65535 spans grid.height_min_m..height_max_m)
+        web/data/basemap.jpg    CTX image on the mission grid, tinted to Mars colours
+        web/data/normal.jpg     object-space normal map from the full 5 m elevation grid
         web/data/slope.png, thermal.png   transparent overlays
         web/data/mars.jpg       global Viking colour mosaic for the globe (NASA Mars Trek)
         web/assets/astronaut.jpg  Apollo 11 photo AS11-40-5903 (NASA, public domain)
@@ -21,7 +23,7 @@ from pathlib import Path
 import numpy as np
 from matplotlib import colormaps
 from PIL import Image
-from scipy.ndimage import zoom
+from scipy.ndimage import gaussian_filter, zoom
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data/processed"
@@ -29,7 +31,10 @@ LAYERS = ROOT / "data/layers"
 WEB = ROOT / "web/data"
 ASSETS = ROOT / "web/assets"
 
-MESH = 500      # terrain mesh resolution (cells per side)
+MESH = 1000     # terrain mesh resolution (cells per side)
+RELIEF = 2.0    # vertical exaggeration used by the 3D view
+# CTX is a single-band image; these stops tint it from shadow to sunlit dust.
+TINT = [(0.0, (18, 9, 6)), (0.3, (92, 48, 30)), (0.62, (176, 108, 68)), (1.0, (240, 205, 160))]
 PROFILE = 160   # samples per route profile
 
 TREK = ("https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/"
@@ -119,6 +124,22 @@ def radiation():
     }
 
 
+def terrain_textures(elev, meta):
+    """Tinted basemap and a normal map that carries the full 5 m relief."""
+    grey = np.asarray(Image.open(LAYERS / "jezero_ctx_basemap_5m.png").convert("L"), dtype=float) / 255
+    lo, hi = np.percentile(grey, [0.5, 99.5])
+    grey = np.clip((grey - lo) / (hi - lo), 0, 1) ** 0.9
+    stops = np.array([s for s, _ in TINT])
+    rgb = np.stack([np.interp(grey, stops, [c[i] for _, c in TINT]) for i in range(3)], axis=-1)
+    Image.fromarray(rgb.astype(np.uint8)).save(WEB / "basemap.jpg", quality=90)
+
+    # World axes: x east, y up, z south. Heights are exaggerated like the mesh.
+    dz_south, dz_east = np.gradient(gaussian_filter(elev, 0.7) * RELIEF, meta["cell_m"])
+    n = np.stack([-dz_east, np.ones_like(elev), -dz_south], axis=-1)
+    n /= np.linalg.norm(n, axis=-1, keepdims=True)
+    Image.fromarray(((n * 0.5 + 0.5) * 255).round().astype(np.uint8)).save(WEB / "normal.jpg", quality=93)
+
+
 def overlays(slope, meta):
     safe, limit = meta["safe_slope_deg"], meta["max_slope_deg"]
     s = slope.reshape(1000, 2, 1000, 2).max(axis=(1, 3))
@@ -174,9 +195,10 @@ def main():
     n = meta["shape"][0]
 
     block = n // MESH
-    height = elev.reshape(MESH, block, MESH, block).mean(axis=(1, 3)).astype("<f4")
-    height.tofile(WEB / "height.bin")
-    Image.open(LAYERS / "jezero_ctx_basemap_5m.png").convert("L").save(WEB / "basemap.jpg", quality=84)
+    height = elev.reshape(MESH, block, MESH, block).mean(axis=(1, 3))
+    h_min, h_max = float(height.min()), float(height.max())
+    ((height - h_min) / (h_max - h_min) * 65535).round().astype("<u2").tofile(WEB / "height.bin")
+    terrain_textures(elev, meta)
     ti_min, ti_max = overlays(slope, meta)
     inertia = zoom(np.array(Image.open(LAYERS / "jezero_thermal_inertia_100m.tif"), dtype=float),
                    n / 100, order=1)
@@ -194,8 +216,8 @@ def main():
                        s["routes"]) for s in routes["stops"]]
 
     mission = {
-        "grid": {**meta, "mesh": MESH, "height_min_m": float(height.min()),
-                 "height_max_m": float(height.max()),
+        "grid": {**meta, "mesh": MESH, "relief": RELIEF, "height_min_m": h_min,
+                 "height_max_m": h_max,
                  "thermal_inertia_range": [ti_min, ti_max]},
         "base": {"name": "Octavia E. Butler Landing", **routes["start"]},
         "targets": targets,
