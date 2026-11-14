@@ -1,4 +1,6 @@
-# Rover first, then human
+# SafePath
+
+Rover first, then human.
 
 NASA Space Apps Challenge 2026: a layered Mars map and route planner for astronaut
 surface exploration in Jezero crater.
@@ -8,7 +10,17 @@ route first. The planner computes three routes on real NASA terrain data, checks
 the rover's battery and the astronaut's oxygen for the round trip, and repairs
 the route with D* Lite when the rover meets an obstacle the orbital map did not show.
 
-> Project name, team members and the live demo link will be added before submission.
+## Team
+
+| Member | Role |
+|---|---|
+| Ali Andaç Erdaş | Route engine, simulation, integration |
+| Aras | Map layers and 3D terrain |
+| Hilal | Web interface |
+| Taha | Research and presentation |
+| Batuhan | Research and presentation |
+
+> The live demo link will be added before submission.
 
 ## What works today
 
@@ -19,7 +31,7 @@ the route with D* Lite when the rover meets an obstacle the orbital map did not 
 | Battery and oxygen check for the round trip | Working, with placeholder rover numbers |
 | Return trip with a hidden obstacle and D* Lite replanning | Working |
 | Six real Perseverance science stops as selectable targets | Working |
-| 3D map and web interface | In progress |
+| Web interface: 3D Mars globe, 3D terrain, route ledger, astronaut status, tablet view | Working |
 
 ## Mission area
 
@@ -116,11 +128,33 @@ The processed grids and results are already in `data/processed/`, so the route
 scripts run without the download.
 
 ```
-pipeline/   build_grid.py, export_terrain.py, validate_waypoints.py
+pipeline/   build_grid.py, export_terrain.py, export_web.py, validate_waypoints.py
 route/      dstar_lite.py, plan_routes.py, simulate_return.py
 tests/      D* Lite checked against Dijkstra, including replanning
 data/       processed/ (grids, routes, scenario, validation), layers/ (image, thermal inertia)
+web/        index.html, styles.css, app.js, data/, assets/, vendor/ (three.js)
 ```
+
+## Web interface
+
+A static site in `web/`, no build step. Serve the folder and open it:
+
+```
+python -m http.server 8765 --directory web
+```
+
+- **Path selector**: a rotating Mars globe, coordinate entry, a flight to Jezero,
+  then the 3D terrain with data layers, the three routes and their slope
+  profiles. "Send rover" drives the scout out and back, including the hidden
+  obstacle and the D* Lite repair on the safest route to the delta top.
+- **Astronaut status**: suit telemetry (simulated values, synthesized breathing
+  sound) and what the selected route leaves in oxygen and battery.
+- **Tablet view**: minimum, average and maximum values along the route and the
+  arrival point rendered from the terrain data.
+
+Routes are precomputed by the Python engine for seven surveyed targets; a typed
+coordinate snaps to the nearest one. `pipeline/export_web.py` builds `web/data`.
+The interface is available in English and Turkish.
 
 ## Use of AI
 
@@ -149,7 +183,12 @@ NASA logos or brand elements.
   https://www.nasa.gov/wp-content/uploads/static/history/alsj/19790073512_1979073512.pdf
 - NASA. xEMU testing (8 hour EVA design requirement).
   https://ntrs.nasa.gov/citations/20240004887
-- Software: NumPy, SciPy, Pillow, Matplotlib, pytest.
+- NASA Mars Trek. Viking MDIM 2.1 colour mosaic (globe texture). https://trek.nasa.gov/mars/
+- NASA. Apollo 11 photograph AS11-40-5903. https://images.nasa.gov/details/as11-40-5903
+- MSL RAD surface radiation: Hassler, D. M., et al. (2014). Science 343.
+  https://doi.org/10.1126/science.1244797
+- Software: NumPy, SciPy, Pillow, Matplotlib, pytest, three.js (MIT).
+- Fonts: Newsreader, IBM Plex Sans, IBM Plex Mono (SIL Open Font License).
 
 ## License
 

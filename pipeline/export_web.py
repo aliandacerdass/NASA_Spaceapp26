@@ -1,0 +1,170 @@
+"""Export everything the web interface reads into web/data and web/assets.
+
+Input : data/processed/*, data/layers/*  (run the other pipeline and route scripts first)
+Output: web/data/mission.json   targets, routes with profiles, return scenario, validation
+        web/data/height.bin     Float32 little-endian, 500 x 500, metres, row 0 = north
+        web/data/basemap.jpg    CTX image on the mission grid
+        web/data/slope.png, thermal.png   transparent overlays
+        web/data/mars.jpg       global Viking colour mosaic for the globe (NASA Mars Trek)
+        web/assets/astronaut.jpg  Apollo 11 photo AS11-40-5903 (NASA, public domain)
+
+Downloads about 2.5 MB on the first run (globe tiles and the photo).
+
+Usage: python pipeline/export_web.py
+"""
+import io
+import json
+import urllib.request
+from pathlib import Path
+
+import numpy as np
+from matplotlib import colormaps
+from PIL import Image
+from scipy.ndimage import zoom
+
+ROOT = Path(__file__).resolve().parent.parent
+DATA = ROOT / "data/processed"
+LAYERS = ROOT / "data/layers"
+WEB = ROOT / "web/data"
+ASSETS = ROOT / "web/assets"
+
+MESH = 500      # terrain mesh resolution (cells per side)
+PROFILE = 160   # samples per route profile
+
+TREK = ("https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/"
+        "1.0.0/default/default028mm/2/{row}/{col}.jpg")
+ASTRONAUT = "https://images-assets.nasa.gov/image/as11-40-5903/as11-40-5903~large.jpg"
+
+# Representative surface radiation: Curiosity RAD in Gale crater, not Jezero.
+RADIATION = {
+    "dose_equivalent_msv_per_day": 0.67,
+    "absorbed_dose_mgy_per_day": 0.21,
+    "source": "MSL RAD, Gale crater (Hassler et al. 2014; SwRI release)",
+}
+
+
+def get(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    return urllib.request.urlopen(req, timeout=60).read()
+
+
+def globe_texture():
+    out = WEB / "mars.jpg"
+    if out.exists():
+        return
+    sheet = Image.new("RGB", (8 * 256, 4 * 256))
+    for row in range(4):
+        for col in range(8):
+            tile = Image.open(io.BytesIO(get(TREK.format(row=row, col=col))))
+            sheet.paste(tile, (col * 256, row * 256))
+    sheet.save(out, quality=88)
+
+
+def astronaut_photo():
+    out = ASSETS / "astronaut.jpg"
+    if not out.exists():
+        out.write_bytes(get(ASTRONAUT))
+
+
+def overlays(slope, meta):
+    safe, limit = meta["safe_slope_deg"], meta["max_slope_deg"]
+    s = slope.reshape(1000, 2, 1000, 2).max(axis=(1, 3))
+    rgba = np.zeros((1000, 1000, 4), np.uint8)
+    for low, high, colour in ((10, safe, (242, 179, 61, 110)), (safe, limit, (255, 120, 40, 200)),
+                              (limit, 91, (229, 72, 77, 255))):
+        rgba[(s > low) & (s <= high)] = colour
+    Image.fromarray(rgba).save(WEB / "slope.png")
+
+    inertia = np.array(Image.open(LAYERS / "jezero_thermal_inertia_100m.tif"), dtype=float)
+    fine = zoom(inertia, 5, order=1)
+    scaled = np.clip((fine - 130) / (400 - 130), 0, 1)
+    colour = (colormaps["inferno"](scaled) * 255).astype(np.uint8)
+    colour[..., 3] = 170
+    Image.fromarray(colour).save(WEB / "thermal.png")
+    return float(inertia.min()), float(inertia.max())
+
+
+def sample(values, count):
+    values = np.asarray(values, dtype=float)
+    idx = np.linspace(0, len(values) - 1, min(count, len(values))).round().astype(int)
+    return [round(float(v), 2) for v in values[idx]]
+
+
+def stats(values):
+    values = np.asarray(values, dtype=float)
+    return {"min": round(float(values.min()), 1), "mean": round(float(values.mean()), 1),
+            "max": round(float(values.max()), 1)}
+
+
+def enrich(route, elev, slope, inertia, cell_m):
+    cells = np.array(route["cells"])
+    r, c = cells[:, 0], cells[:, 1]
+    steps = np.hypot(np.diff(r), np.diff(c)) * cell_m
+    dist = np.concatenate([[0.0], np.cumsum(steps)])
+    e, s, t = elev[r, c], slope[r, c], inertia[r, c]
+    out = {k: v for k, v in route.items() if k != "path"}
+    out["profile"] = {"dist": sample(dist, PROFILE), "elev": sample(e, PROFILE),
+                      "slope": sample(s, PROFILE)}
+    out["stats"] = {"slope_deg": stats(s), "elevation_m": stats(e), "thermal_inertia": stats(t)}
+    return out
+
+
+def main():
+    WEB.mkdir(parents=True, exist_ok=True)
+    ASSETS.mkdir(parents=True, exist_ok=True)
+    meta = json.loads((DATA / "meta.json").read_text())
+    elev = np.load(DATA / "elevation.npy").astype(float)
+    slope = np.load(DATA / "slope.npy").astype(float)
+    routes = json.loads((DATA / "routes.json").read_text())
+    scenario = json.loads((DATA / "return_scenario.json").read_text())
+    validation = json.loads((DATA / "validation.json").read_text())
+    n = meta["shape"][0]
+
+    block = n // MESH
+    height = elev.reshape(MESH, block, MESH, block).mean(axis=(1, 3)).astype("<f4")
+    height.tofile(WEB / "height.bin")
+    Image.open(LAYERS / "jezero_ctx_basemap_5m.png").convert("L").save(WEB / "basemap.jpg", quality=84)
+    ti_min, ti_max = overlays(slope, meta)
+    inertia = zoom(np.array(Image.open(LAYERS / "jezero_thermal_inertia_100m.tif"), dtype=float),
+                   n / 100, order=1)
+
+    def target(target_id, name, why, kind, cell, lonlat, route_list):
+        return {"id": target_id, "name": name, "why": why, "kind": kind, "cell": cell,
+                "lonlat": lonlat,
+                "routes": [enrich(r, elev, slope, inertia, meta["cell_m"]) for r in route_list]}
+
+    targets = [target("delta_top", "Delta top", "Team-chosen target behind the delta scarp", "team",
+                      routes["goal"]["cell"], routes["goal"]["lonlat"], routes["routes"])]
+    targets += [target(s["id"], s["name"], s["why"], "perseverance", s["cell"], s["lonlat"],
+                       s["routes"]) for s in routes["stops"]]
+
+    mission = {
+        "grid": {**meta, "mesh": MESH, "height_min_m": float(height.min()),
+                 "height_max_m": float(height.max()),
+                 "thermal_inertia_range": [ti_min, ti_max]},
+        "base": {"name": "Octavia E. Butler Landing", **routes["start"]},
+        "targets": targets,
+        "rover": routes["rover"], "soil": routes["soil"], "crew": routes["crew"],
+        "radiation": RADIATION,
+        "validation": validation,
+        "scenario": {
+            "target": "delta_top", "profile": scenario["profile"],
+            "planned_cells": scenario["planned"]["cells"],
+            "driven_cells": scenario["driven"]["cells"],
+            "obstacle_centre": scenario["obstacle"]["centre_cell"],
+            "obstacle_radius_m": scenario["scenario"]["obstacle_radius_m"],
+            "sensor_range_m": scenario["scenario"]["sensor_range_m"],
+            "first_detection_cell": scenario["events"][0]["at_cell"],
+            **{k: scenario[k] for k in ("planned_distance_m", "driven_distance_m", "replans",
+                                         "repair_total_s", "fresh_plan_at_first_detection_s")},
+        },
+    }
+    (WEB / "mission.json").write_text(json.dumps(mission, separators=(",", ":")) + "\n")
+    globe_texture()
+    astronaut_photo()
+    for p in sorted(list(WEB.iterdir()) + list(ASSETS.iterdir())):
+        print(f"{p.stat().st_size / 1024:8.0f} KB  {p.relative_to(ROOT)}")
+
+
+if __name__ == "__main__":
+    main()
