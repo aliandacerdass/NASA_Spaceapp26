@@ -230,6 +230,8 @@ figcaption { margin-top: 22px; font: 400 10.5px/1 var(--mono); color: var(--mute
 .t-table td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .t-table td:first-child, .t-table th:first-child { text-align: left; color: var(--muted); padding-left: 0; }
 .t-view { position: relative; flex: 1; min-height: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.t-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.t-note { padding: 8px 18px 0; font: 400 10.5px/1.5 var(--mono); color: var(--muted); }
 .t-caption { position: absolute; left: 12px; bottom: 10px; font: 400 10.5px/1 var(--mono); color: #fff; text-shadow: 0 1px 3px #000; }
 .t-status { display: flex; align-items: center; gap: 22px; padding: 12px 18px; }
 .lamp { display: flex; align-items: center; gap: 8px; font: 500 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
@@ -257,6 +259,7 @@ figcaption { margin-top: 22px; font: 400 10.5px/1 var(--mono); color: var(--mute
   .route canvas { grid-column: 1 / -1; }
   .astro { grid-template-columns: 1fr; padding: 20px; }
   .t-table th:nth-child(n+5), .t-table td:nth-child(n+5) { display: none; }
+  .t-table { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .visor { animation: none; }

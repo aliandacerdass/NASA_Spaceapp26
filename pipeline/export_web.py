@@ -7,8 +7,9 @@ Output: web/data/mission.json   targets, routes with profiles, return scenario, 
         web/data/slope.png, thermal.png   transparent overlays
         web/data/mars.jpg       global Viking colour mosaic for the globe (NASA Mars Trek)
         web/assets/astronaut.jpg  Apollo 11 photo AS11-40-5903 (NASA, public domain)
+        web/assets/arrival/*.jpg  Perseverance Navcam photos taken at the science stops
 
-Downloads about 2.5 MB on the first run (globe tiles and the photo).
+Downloads about 4 MB on the first run (globe tiles, photos, weather feed).
 
 Usage: python pipeline/export_web.py
 """
@@ -34,6 +35,18 @@ PROFILE = 160   # samples per route profile
 TREK = ("https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/"
         "1.0.0/default/default028mm/2/{row}/{col}.jpg")
 ASTRONAUT = "https://images-assets.nasa.gov/image/as11-40-5903/as11-40-5903~large.jpg"
+
+# Navcam frames taken by Perseverance while parked at each stop (sol, raw image URL).
+RAW = "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/"
+PHOTOS = {
+    "rochette": (180, "00180/ids/edr/browse/ncam/NLF_0180_0682927330_919ECM_N0070000NCAM02180_01_195J04_1200.jpg"),
+    "wildcat_ridge": (502, "00502/ids/edr/browse/ncam/NLF_0502_0711508459_901ECM_N0261222NCAM04502_01_195J01_1200.jpg"),
+    "amalik": (565, "00565/ids/edr/browse/ncam/NLF_0565_0717106894_160ECM_N0290000NCAM03565_01_195J01_1200.jpg"),
+    "three_forks": (652, "00652/ids/edr/browse/ncam/NLF_0652_0724830144_855ECM_N0320148NCAM03652_05_095J01_1200.jpg"),
+    "berea": (736, "00736/ids/edr/browse/ncam/NLF_0736_0732292608_746ECM_N0370000NCAM03736_01_195J01_1200.jpg"),
+    "belva": (770, "00770/ids/edr/browse/ncam/NLF_0770_0735307364_034ECM_N0390650NCAM00709_01_095J01_1200.jpg"),
+}
+WEATHER_FEED = "https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json"
 
 # Representative surface radiation: Curiosity RAD in Gale crater, not Jezero.
 RADIATION = {
@@ -64,6 +77,36 @@ def astronaut_photo():
     out = ASSETS / "astronaut.jpg"
     if not out.exists():
         out.write_bytes(get(ASTRONAUT))
+
+
+def arrival_photos():
+    folder = ASSETS / "arrival"
+    folder.mkdir(exist_ok=True)
+    out = {}
+    for stop, (sol, path) in PHOTOS.items():
+        file = folder / f"{stop}.jpg"
+        if not file.exists():
+            file.write_bytes(get(RAW + path))
+        out[stop] = {"file": f"assets/arrival/{stop}.jpg", "sol": sol, "source": RAW + path,
+                     "credit": "NASA/JPL-Caltech"}
+    return out
+
+
+def weather():
+    """Air temperature and pressure measured in Jezero by Perseverance's MEDA station."""
+    cache = ROOT / "data/raw/m20_weather.json"
+    if not cache.exists():
+        cache.write_bytes(get(WEATHER_FEED))
+    sols = [s for s in json.loads(cache.read_text())["sols"]
+            if all(isinstance(s[k], (int, float)) for k in ("min_temp", "max_temp", "pressure"))]
+    lows, highs = [s["min_temp"] for s in sols], [s["max_temp"] for s in sols]
+    pressure = [s["pressure"] for s in sols]
+    return {
+        "sols": [int(sols[0]["sol"]), int(sols[-1]["sol"])],
+        "air_temp_c": {"min": min(lows), "mean": round(float(np.mean(lows + highs)), 1), "max": max(highs)},
+        "pressure_pa": {"min": min(pressure), "mean": round(float(np.mean(pressure)), 1), "max": max(pressure)},
+        "source": "Perseverance MEDA, NASA Mars 2020 weather feed",
+    }
 
 
 def overlays(slope, meta):
@@ -128,9 +171,11 @@ def main():
     inertia = zoom(np.array(Image.open(LAYERS / "jezero_thermal_inertia_100m.tif"), dtype=float),
                    n / 100, order=1)
 
+    photos = arrival_photos()
+
     def target(target_id, name, why, kind, cell, lonlat, route_list):
         return {"id": target_id, "name": name, "why": why, "kind": kind, "cell": cell,
-                "lonlat": lonlat,
+                "lonlat": lonlat, "photo": photos.get(target_id),
                 "routes": [enrich(r, elev, slope, inertia, meta["cell_m"]) for r in route_list]}
 
     targets = [target("delta_top", "Delta top", "Team-chosen target behind the delta scarp", "team",
@@ -146,6 +191,7 @@ def main():
         "targets": targets,
         "rover": routes["rover"], "soil": routes["soil"], "crew": routes["crew"],
         "radiation": RADIATION,
+        "weather": weather(),
         "validation": validation,
         "scenario": {
             "target": "delta_top", "profile": scenario["profile"],
@@ -162,7 +208,7 @@ def main():
     (WEB / "mission.json").write_text(json.dumps(mission, separators=(",", ":")) + "\n")
     globe_texture()
     astronaut_photo()
-    for p in sorted(list(WEB.iterdir()) + list(ASSETS.iterdir())):
+    for p in sorted(list(WEB.iterdir()) + [q for q in ASSETS.rglob("*") if q.is_file()]):
         print(f"{p.stat().st_size / 1024:8.0f} KB  {p.relative_to(ROOT)}")
 
 

@@ -143,6 +143,8 @@
               <th data-i18n="t_slope">Slope °</th>
               <th data-i18n="t_elev">Elevation m</th>
               <th data-i18n="t_ground">Ground (TI)</th>
+              <th data-i18n="t_temp">Air temp °C</th>
+              <th data-i18n="t_press">Pressure Pa</th>
               <th data-i18n="t_rad">Radiation mSv/day</th>
               <th data-i18n="t_oxy">Oxygen use %</th>
             </tr></thead>
@@ -150,8 +152,10 @@
           </table>
           <div class="t-view">
             <div class="canvas-host" id="host-tablet"></div>
-            <p class="t-caption" data-i18n="t_caption">Arrival point, rendered from HiRISE terrain and CTX image</p>
+            <img class="t-photo" id="t-photo" alt="" hidden>
+            <p class="t-caption" id="t-caption"></p>
           </div>
+          <p class="t-note" id="t-note"></p>
           <div class="t-status">
             <span class="lamp lamp-risk" id="lamp-risk"><i></i><span data-i18n="t_risk">Risk</span></span>
             <span class="lamp lamp-safe" id="lamp-safe"><i></i><span data-i18n="t_safe">Safe</span></span>

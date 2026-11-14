@@ -49,7 +49,10 @@ const I18N = {
     no_target: 'Choose a target in Path selector first.',
     t_title: 'Along the route', t_slope: 'Slope °', t_elev: 'Elevation m', t_ground: 'Ground (TI)',
     t_rad: 'Radiation mSv/day', t_oxy: 'Oxygen use %', t_min: 'Min', t_avg: 'Avg', t_max: 'Max',
-    t_caption: 'Arrival point, rendered from HiRISE terrain and CTX image',
+    t_temp: 'Air temp °C', t_press: 'Pressure Pa',
+    t_caption: 'Arrival point, rendered from HiRISE terrain and CTX image. No rover photo exists here.',
+    t_photo: 'Photo taken here by Perseverance (Navcam), sol {sol}. {credit}',
+    t_note: 'Slope, elevation and ground: along this route. Air temperature and pressure: measured in Jezero by Perseverance (MEDA), sols {a}–{b}. Radiation: Curiosity RAD in Gale crater, representative.',
     t_risk: 'Risk', t_safe: 'Safe',
     r_slope: '{over} m steeper than {safe}°', r_oxygen: 'oxygen reserve not kept', r_battery: 'rover battery reserve not kept',
     r_obstacle: 'unmapped obstacle on the return leg', r_none: 'Slope, oxygen and battery are within limits.',
@@ -100,7 +103,10 @@ const I18N = {
     no_target: 'Önce Patika seçici\'den bir hedef seçin.',
     t_title: 'Yol boyu değerler', t_slope: 'Eğim °', t_elev: 'Yükseklik m', t_ground: 'Zemin (IA)',
     t_rad: 'Radyasyon mSv/gün', t_oxy: 'Oksijen kullanımı %', t_min: 'Min', t_avg: 'Ort', t_max: 'Maks',
-    t_caption: 'Varış noktası; HiRISE arazisi ve CTX görüntüsünden oluşturuldu',
+    t_temp: 'Hava sıcaklığı °C', t_press: 'Basınç Pa',
+    t_caption: 'Varış noktası; HiRISE arazisi ve CTX görüntüsünden oluşturuldu. Burada rover fotoğrafı yok.',
+    t_photo: 'Perseverance\'ın burada çektiği fotoğraf (Navcam), sol {sol}. {credit}',
+    t_note: 'Eğim, yükseklik ve zemin: bu rota boyunca. Hava sıcaklığı ve basınç: Jezero\'da Perseverance (MEDA) ölçümü, sol {a}–{b}. Radyasyon: Gale kraterinde Curiosity RAD, temsili.',
     t_risk: 'Risk', t_safe: 'Güvenli',
     r_slope: '{over} m yol {safe}°\'den dik', r_oxygen: 'oksijen payı korunmuyor', r_battery: 'rover batarya payı korunmuyor',
     r_obstacle: 'dönüş yolunda haritada olmayan engel', r_none: 'Eğim, oksijen ve batarya sınırlar içinde.',
@@ -364,9 +370,15 @@ function drawPanels() {
   $('f-verdict').classList.toggle('is-risk', !r.oxygen_ok);
 
   $('t-route').textContent = name;
-  const st = r.stats, rad = mission.radiation.dose_equivalent_msv_per_day.toFixed(2);
+  const st = r.stats, rad = mission.radiation.dose_equivalent_msv_per_day.toFixed(2), wx = mission.weather;
   const line = (key, k, radCell, oxyCell) => `<tr><td>${t(key)}</td><td>${st.slope_deg[k].toFixed(1)}</td>` +
-    `<td>${Math.round(st.elevation_m[k])}</td><td>${Math.round(st.thermal_inertia[k])}</td><td>${radCell}</td><td>${oxyCell}</td></tr>`;
+    `<td>${Math.round(st.elevation_m[k])}</td><td>${Math.round(st.thermal_inertia[k])}</td>` +
+    `<td>${wx.air_temp_c[k].toFixed(1)}</td><td>${Math.round(wx.pressure_pa[k])}</td><td>${radCell}</td><td>${oxyCell}</td></tr>`;
+  $('t-note').textContent = t('t_note', { a: wx.sols[0], b: wx.sols[1] });
+  const photo = state.target.photo;
+  $('t-photo').hidden = !photo;
+  if (photo) $('t-photo').src = photo.file;
+  $('t-caption').textContent = photo ? t('t_photo', photo) : t('t_caption');
   $('t-body').innerHTML = line('t_min', 'min', '–', '–') + line('t_avg', 'mean', rad, Math.round(f.oxygenUse)) + line('t_max', 'max', '–', '–');
 
   const reasons = [];

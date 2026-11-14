@@ -103,7 +103,9 @@ of Perseverance inside the mission area (`data/processed/validation.json`):
 |---|---|
 | Terrain, slope, image, thermal inertia | Real NASA and USGS data |
 | Route computation and D* Lite | Real algorithm running on the real data |
-| Science stop coordinates | Real Perseverance positions |
+| Science stop coordinates and arrival photos | Real Perseverance positions and Navcam frames |
+| Air temperature and pressure | Real Jezero measurements (MEDA), four sols |
+| Radiation | Real measurement, but from Gale crater (Curiosity), shown as representative |
 | Rover motion and sensing | Simulated |
 | Hidden obstacle | Placed by us |
 | Rover mass, speed, battery, power use | Placeholders until the rover design is final |
@@ -149,8 +151,10 @@ python -m http.server 8765 --directory web
   obstacle and the D* Lite repair on the safest route to the delta top.
 - **Astronaut status**: suit telemetry (simulated values, synthesized breathing
   sound) and what the selected route leaves in oxygen and battery.
-- **Tablet view**: minimum, average and maximum values along the route and the
-  arrival point rendered from the terrain data.
+- **Tablet view**: minimum, average and maximum values along the route, the air
+  temperature and pressure Perseverance measured in Jezero, and a real Navcam
+  photo Perseverance took at the arrival point. The team's delta-top target has
+  no rover photo, so its view is rendered from the terrain data and labelled so.
 
 Routes are precomputed by the Python engine for seven surveyed targets; a typed
 coordinate snaps to the nearest one. `pipeline/export_web.py` builds `web/data`.
@@ -184,6 +188,10 @@ NASA logos or brand elements.
 - NASA. xEMU testing (8 hour EVA design requirement).
   https://ntrs.nasa.gov/citations/20240004887
 - NASA Mars Trek. Viking MDIM 2.1 colour mosaic (globe texture). https://trek.nasa.gov/mars/
+- NASA/JPL-Caltech. Mars 2020 raw images, Navcam frames from sols 180, 502, 565,
+  652, 736 and 770. https://mars.nasa.gov/mars2020/multimedia/raw-images/
+- NASA/JPL-Caltech/CAB. Mars 2020 MEDA weather feed, sols 1130 to 1133.
+  https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json
 - NASA. Apollo 11 photograph AS11-40-5903. https://images.nasa.gov/details/as11-40-5903
 - MSL RAD surface radiation: Hassler, D. M., et al. (2014). Science 343.
   https://doi.org/10.1126/science.1244797
