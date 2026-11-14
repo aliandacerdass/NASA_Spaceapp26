@@ -1,6 +1,7 @@
 """Plan the three rover routes (fastest / safest / most efficient) with D* Lite.
 
 Input : data/processed/elevation.npy, slope.npy, meta.json  (pipeline/build_grid.py)
+        data/layers/jezero_thermal_inertia_100m.tif  (THEMIS thermal inertia, same area)
 Output: data/processed/routes.json, routes.png
 
 Usage: python -m route.plan_routes
@@ -11,10 +12,14 @@ from array import array
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
+from scipy.ndimage import zoom
 
 from route.dstar_lite import INF, MOVES, DStarLite
 
-DATA = Path(__file__).resolve().parent.parent / "data/processed"
+ROOT = Path(__file__).resolve().parent.parent
+DATA = ROOT / "data/processed"
+THERMAL = ROOT / "data/layers/jezero_thermal_inertia_100m.tif"
 
 # Mission endpoints (lat, lon in degrees).
 START = (18.4446, 77.4509)  # Perseverance landing site, crater floor
@@ -26,11 +31,16 @@ G_MARS = 3.71  # m/s^2
 ROVER = {
     "mass_kg": 200.0,
     "speed_ms": 0.5,           # on flat ground
-    "rolling_resistance": 0.15,
     "drive_efficiency": 0.6,
     "idle_power_w": 100.0,     # avionics, heaters
     "battery_wh": 3000.0,
     "battery_reserve": 0.2,
+}
+# PLACEHOLDER ground model: thermal inertia (J m-2 K-1 s-1/2) tells loose sand
+# (low) from firm rock (high); wheels lose more energy on loose ground.
+SOIL = {
+    "thermal_inertia_loose": 150.0, "rolling_resistance_loose": 0.25,
+    "thermal_inertia_firm": 350.0, "rolling_resistance_firm": 0.10,
 }
 CREW = {"walk_speed_ms": 1.0, "oxygen_h": 8.0, "oxygen_reserve": 0.25}
 
@@ -46,8 +56,18 @@ def speed_factor(slope, max_slope):
     return 1.0 - 0.7 * slope / max_slope
 
 
-def edge_terms(elev, slope, meta):
-    """Per-direction arrays for every move: length, slope, climb, validity."""
+def rolling_resistance(shape):
+    """Per-cell rolling resistance from the thermal inertia layer (bilinear to the grid)."""
+    inertia = np.array(Image.open(THERMAL), dtype=float)
+    inertia = zoom(inertia, (shape[0] / inertia.shape[0], shape[1] / inertia.shape[1]), order=1)
+    s = SOIL
+    return inertia, np.interp(
+        inertia, [s["thermal_inertia_loose"], s["thermal_inertia_firm"]],
+        [s["rolling_resistance_loose"], s["rolling_resistance_firm"]])
+
+
+def edge_terms(elev, slope, crr, meta):
+    """Per-direction arrays for every move: length, slope, climb, resistance, validity."""
     cell, max_slope = meta["cell_m"], meta["max_slope_deg"]
     h, w = elev.shape
     for dr, dc in MOVES:
@@ -58,14 +78,16 @@ def edge_terms(elev, slope, meta):
         s[src] = np.maximum(slope[src], slope[dst])
         climb = np.zeros((h, w))
         climb[src] = np.maximum(elev[dst] - elev[src], 0.0)
-        yield length, s, climb, s <= max_slope
+        resistance = crr.copy()
+        resistance[src] = np.maximum(crr[src], crr[dst])
+        yield length, s, climb, resistance, s <= max_slope
 
 
-def edge_costs(profile, elev, slope, meta):
+def edge_costs(profile, elev, slope, crr, meta):
     """costs[d] (flat arrays) for a profile and the lowest straight-move cost."""
     r, max_slope, safe = ROVER, meta["max_slope_deg"], meta["safe_slope_deg"]
     costs = []
-    for length, s, climb, ok in edge_terms(elev, slope, meta):
+    for length, s, climb, resistance, ok in edge_terms(elev, slope, crr, meta):
         with np.errstate(invalid="ignore"):
             time_s = length / (r["speed_ms"] * speed_factor(s, max_slope))
             if profile == "fastest":
@@ -74,19 +96,20 @@ def edge_costs(profile, elev, slope, meta):
                 c = length * (1.0 + (s / safe) ** 3)
                 ok = ok & (s <= safe)  # never enters cells above the safe limit
             else:
-                c = energy_wh(length, climb, time_s)
+                c = energy_wh(length, climb, time_s, resistance)
         costs.append(array("d", np.where(ok, c, INF).tobytes()))
     flat = {
         "fastest": meta["cell_m"] / r["speed_ms"],
         "safest": meta["cell_m"],
-        "efficient": energy_wh(meta["cell_m"], 0.0, meta["cell_m"] / r["speed_ms"]),
+        "efficient": energy_wh(meta["cell_m"], 0.0, meta["cell_m"] / r["speed_ms"],
+                               SOIL["rolling_resistance_firm"]),
     }[profile]
     return costs, flat
 
 
-def energy_wh(length, climb, time_s):
+def energy_wh(length, climb, time_s, resistance):
     r = ROVER
-    traction = r["mass_kg"] * G_MARS * (r["rolling_resistance"] * length + climb)
+    traction = r["mass_kg"] * G_MARS * (resistance * length + climb)
     return (traction / r["drive_efficiency"] + r["idle_power_w"] * time_s) / 3600.0
 
 
@@ -104,7 +127,7 @@ def to_lonlat(row, col, meta):
     return round(lon, 6), round(lat, 6)
 
 
-def leg_stats(cells, elev, slope, meta):
+def leg_stats(cells, elev, slope, crr, meta):
     """Distance, rover time/energy and crew walking time for one direction."""
     max_slope = meta["max_slope_deg"]
     dist = time_s = energy = walk_s = 0.0
@@ -114,14 +137,15 @@ def leg_stats(cells, elev, slope, meta):
         t = length / (ROVER["speed_ms"] * speed_factor(s, max_slope))
         dist += length
         time_s += t
-        energy += energy_wh(length, max(elev[r1, c1] - elev[r0, c0], 0.0), t)
+        energy += energy_wh(length, max(elev[r1, c1] - elev[r0, c0], 0.0), t,
+                            max(crr[r0, c0], crr[r1, c1]))
         walk_s += length / (CREW["walk_speed_ms"] * speed_factor(s, max_slope))
     return dist, time_s, energy, walk_s
 
 
-def describe(name, cells, elev, slope, meta):
-    out_leg = leg_stats(cells, elev, slope, meta)
-    back_leg = leg_stats(cells[::-1], elev, slope, meta)
+def describe(name, cells, elev, slope, inertia, crr, meta):
+    out_leg = leg_stats(cells, elev, slope, crr, meta)
+    back_leg = leg_stats(cells[::-1], elev, slope, crr, meta)
     slopes = np.array([slope[r, c] for r, c in cells])
     battery = ROVER["battery_wh"] * (1 - ROVER["battery_reserve"])
     oxygen_h = CREW["oxygen_h"] * (1 - CREW["oxygen_reserve"])
@@ -135,6 +159,7 @@ def describe(name, cells, elev, slope, meta):
         "rover_energy_wh": round(out_leg[2], 1),
         "max_slope_deg": round(float(slopes.max()), 1),
         "above_safe_m": round(float((slopes > meta["safe_slope_deg"]).mean()) * out_leg[0]),
+        "mean_thermal_inertia": round(float(np.mean([inertia[r, c] for r, c in cells]))),
         "round_trip_energy_wh": round(round_trip_wh, 1),
         "battery_ok": bool(round_trip_wh <= battery),
         "round_trip_walk_h": round(round_trip_walk_h, 2),
@@ -150,25 +175,27 @@ def main():
     meta = json.loads((DATA / "meta.json").read_text())
     width = meta["shape"][1]
     start, goal = to_cell(START, meta), to_cell(GOAL, meta)
+    inertia, crr = rolling_resistance(elev.shape)
 
     routes = []
     for name in PROFILES:
-        costs, flat = edge_costs(name, elev, slope, meta)
+        costs, flat = edge_costs(name, elev, slope, crr, meta)
         planner = DStarLite(costs, width, start[0] * width + start[1],
                             goal[0] * width + goal[1], min_step_cost=flat)
         path = planner.path()
         if path is None:
             raise SystemExit(f"{name}: goal unreachable")
         cells = [divmod(u, width) for u in path]
-        routes.append(describe(name, cells, elev, slope, meta))
+        routes.append(describe(name, cells, elev, slope, inertia, crr, meta))
 
     out = {
         "grid": meta,
         "start": {"cell": list(start), "lonlat": to_lonlat(*start, meta)},
         "goal": {"cell": list(goal), "lonlat": to_lonlat(*goal, meta)},
         "rover": ROVER,
+        "soil": SOIL,
         "crew": CREW,
-        "assumptions": "Rover and crew numbers are placeholders; rover motion is simulated.",
+        "assumptions": "Rover, soil and crew numbers are placeholders; rover motion is simulated.",
         "routes": routes,
     }
     (DATA / "routes.json").write_text(json.dumps(out, separators=(",", ":")) + "\n")
