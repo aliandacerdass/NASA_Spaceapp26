@@ -105,7 +105,8 @@ of Perseverance inside the mission area (`data/processed/validation.json`):
 | Route computation and D* Lite | Real algorithm running on the real data |
 | Science stop coordinates and arrival photos | Real Perseverance positions and Navcam frames |
 | Air temperature and pressure | Real Jezero measurements (MEDA), four sols |
-| Radiation | Real measurement, but from Gale crater (Curiosity), shown as representative |
+| Radiation | 328 real Curiosity RAD measurements, 2012 to 2026, but from Gale crater, not Jezero |
+| Rover model | The team's own CAD design, drawn larger than life on the map |
 | Rover motion and sensing | Simulated |
 | Hidden obstacle | Placed by us |
 | Rover mass, speed, battery, power use | Placeholders until the rover design is final |
@@ -130,7 +131,8 @@ The processed grids and results are already in `data/processed/`, so the route
 scripts run without the download.
 
 ```
-pipeline/   build_grid.py, export_terrain.py, export_web.py, validate_waypoints.py
+pipeline/   build_grid.py, export_terrain.py, export_web.py, export_rover.py,
+            fetch_rad.py, validate_waypoints.py
 route/      dstar_lite.py, plan_routes.py, simulate_return.py
 tests/      D* Lite checked against Dijkstra, including replanning
 data/       processed/ (grids, routes, scenario, validation), layers/ (image, thermal inertia)
@@ -193,9 +195,11 @@ NASA logos or brand elements.
 - NASA/JPL-Caltech/CAB. Mars 2020 MEDA weather feed, sols 1130 to 1133.
   https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json
 - NASA. Apollo 11 photograph AS11-40-5903. https://images.nasa.gov/details/as11-40-5903
+- MSL RAD reduced data records, PDS Planetary Plasma Interactions node, data set
+  MSL-M-RAD-3-RDR-V1.0. https://pds-ppi.igpp.ucla.edu/data/MSL-M-RAD-3-RDR-V1.0/
 - MSL RAD surface radiation: Hassler, D. M., et al. (2014). Science 343.
   https://doi.org/10.1126/science.1244797
-- Software: NumPy, SciPy, Pillow, Matplotlib, pytest, three.js (MIT).
+- Software: NumPy, SciPy, Pillow, Matplotlib, pytest, trimesh, cascadio, three.js (MIT).
 - Fonts: Newsreader, IBM Plex Sans, IBM Plex Mono (SIL Open Font License).
 
 ## License

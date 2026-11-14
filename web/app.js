@@ -48,11 +48,11 @@ const I18N = {
     forecast_note: 'Oxygen uses an 8 h suit and Apollo walking speed. Rover battery uses placeholder numbers. Radiation is a representative Gale crater measurement.',
     no_target: 'Choose a target in Path selector first.',
     t_title: 'Along the route', t_slope: 'Slope °', t_elev: 'Elevation m', t_ground: 'Ground (TI)',
-    t_rad: 'Radiation mSv/day', t_oxy: 'Oxygen use %', t_min: 'Min', t_avg: 'Avg', t_max: 'Max',
+    t_rad: 'Radiation mGy/day', t_oxy: 'Oxygen use %', t_min: 'Min', t_avg: 'Avg', t_max: 'Max',
     t_temp: 'Air temp °C', t_press: 'Pressure Pa',
     t_caption: 'Arrival point, rendered from HiRISE terrain and CTX image. No rover photo exists here.',
     t_photo: 'Photo taken here by Perseverance (Navcam), sol {sol}. {credit}',
-    t_note: 'Slope, elevation and ground: along this route. Air temperature and pressure: measured in Jezero by Perseverance (MEDA), sols {a}–{b}. Radiation: Curiosity RAD in Gale crater, representative.',
+    t_note: 'Slope, elevation and ground: along this route. Air temperature and pressure: measured in Jezero by Perseverance (MEDA), sols {a}–{b}. Radiation: {n} Curiosity RAD measurements in Gale crater, {y0}–{y1}; not Jezero.',
     t_risk: 'Risk', t_safe: 'Safe',
     r_slope: '{over} m steeper than {safe}°', r_oxygen: 'oxygen reserve not kept', r_battery: 'rover battery reserve not kept',
     r_obstacle: 'unmapped obstacle on the return leg', r_none: 'Slope, oxygen and battery are within limits.',
@@ -102,11 +102,11 @@ const I18N = {
     forecast_note: 'Oksijen 8 saatlik giysi ve Apollo yürüme hızına göre. Rover bataryası varsayım değerlerle. Radyasyon, Gale kraterinden temsili ölçüm.',
     no_target: 'Önce Patika seçici\'den bir hedef seçin.',
     t_title: 'Yol boyu değerler', t_slope: 'Eğim °', t_elev: 'Yükseklik m', t_ground: 'Zemin (IA)',
-    t_rad: 'Radyasyon mSv/gün', t_oxy: 'Oksijen kullanımı %', t_min: 'Min', t_avg: 'Ort', t_max: 'Maks',
+    t_rad: 'Radyasyon mGy/gün', t_oxy: 'Oksijen kullanımı %', t_min: 'Min', t_avg: 'Ort', t_max: 'Maks',
     t_temp: 'Hava sıcaklığı °C', t_press: 'Basınç Pa',
     t_caption: 'Varış noktası; HiRISE arazisi ve CTX görüntüsünden oluşturuldu. Burada rover fotoğrafı yok.',
     t_photo: 'Perseverance\'ın burada çektiği fotoğraf (Navcam), sol {sol}. {credit}',
-    t_note: 'Eğim, yükseklik ve zemin: bu rota boyunca. Hava sıcaklığı ve basınç: Jezero\'da Perseverance (MEDA) ölçümü, sol {a}–{b}. Radyasyon: Gale kraterinde Curiosity RAD, temsili.',
+    t_note: 'Eğim, yükseklik ve zemin: bu rota boyunca. Hava sıcaklığı ve basınç: Jezero\'da Perseverance (MEDA) ölçümü, sol {a}–{b}. Radyasyon: Gale kraterinde {n} Curiosity RAD ölçümü, {y0}–{y1}; Jezero değil.',
     t_risk: 'Risk', t_safe: 'Güvenli',
     r_slope: '{over} m yol {safe}°\'den dik', r_oxygen: 'oksijen payı korunmuyor', r_battery: 'rover batarya payı korunmuyor',
     r_obstacle: 'dönüş yolunda haritada olmayan engel', r_none: 'Eğim, oksijen ve batarya sınırlar içinde.',
@@ -223,6 +223,16 @@ function label(text, color = '#e9dfcf') {
 }
 
 let overlaySlope, overlayThermal, rover, obstacle;
+const ROVER_SCALE = 34;  // the real rover is 0.82 m long; drawn larger so it can be seen on a 10 km map
+async function loadRover() {  // the team's CAD model, see pipeline/export_rover.py
+  const buf = await fetch('assets/rover.bin').then((r) => r.arrayBuffer());
+  const [nVert, nIdx] = new Uint32Array(buf, 0, 2);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(buf, 8, nVert * 3), 3));
+  geo.setIndex(new THREE.BufferAttribute(new Uint32Array(buf, 8 + nVert * 12, nIdx), 1));
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xe9dfcf, roughness: 0.55, metalness: 0.25 }));
+}
 function buildLand() {
   const m = mission.grid.mesh;
   const geo = new THREE.PlaneGeometry(SIZE, SIZE, m - 1, m - 1);
@@ -239,15 +249,8 @@ function buildLand() {
   overlaySlope = overlay('data/slope.png', 0.9);
 
   rover = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 12), new THREE.MeshStandardMaterial({ color: 0xe9dfcf, roughness: 0.6 }));
-  body.position.y = 5; rover.add(body);
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0xc8693b }));
-  mast.position.set(0, 9, 4); rover.add(mast);
-  const wheel = new THREE.CylinderGeometry(2.2, 2.2, 1.6, 14); wheel.rotateZ(Math.PI / 2);
-  for (const x of [-5, 5]) for (const z of [-5, 0, 5]) {
-    const w = new THREE.Mesh(wheel, new THREE.MeshStandardMaterial({ color: 0x1b1e27 })); w.position.set(x, 2.2, z); rover.add(w);
-  }
-  rover.scale.setScalar(1.8); rover.visible = false; land.add(rover);
+  loadRover().then((model) => { model.scale.setScalar(ROVER_SCALE); rover.add(model); });
+  rover.visible = false; land.add(rover);
 
   const r = mission.scenario.obstacle_radius_m / 10;
   obstacle = new THREE.Group();
@@ -370,16 +373,16 @@ function drawPanels() {
   $('f-verdict').classList.toggle('is-risk', !r.oxygen_ok);
 
   $('t-route').textContent = name;
-  const st = r.stats, rad = mission.radiation.dose_equivalent_msv_per_day.toFixed(2), wx = mission.weather;
-  const line = (key, k, radCell, oxyCell) => `<tr><td>${t(key)}</td><td>${st.slope_deg[k].toFixed(1)}</td>` +
+  const st = r.stats, rad = mission.radiation, wx = mission.weather;
+  const line = (key, k, oxyCell) => `<tr><td>${t(key)}</td><td>${st.slope_deg[k].toFixed(1)}</td>` +
     `<td>${Math.round(st.elevation_m[k])}</td><td>${Math.round(st.thermal_inertia[k])}</td>` +
-    `<td>${wx.air_temp_c[k].toFixed(1)}</td><td>${Math.round(wx.pressure_pa[k])}</td><td>${radCell}</td><td>${oxyCell}</td></tr>`;
-  $('t-note').textContent = t('t_note', { a: wx.sols[0], b: wx.sols[1] });
+    `<td>${wx.air_temp_c[k].toFixed(1)}</td><td>${Math.round(wx.pressure_pa[k])}</td><td>${rad.absorbed_mgy_per_day[k].toFixed(3)}</td><td>${oxyCell}</td></tr>`;
+  $('t-note').textContent = t('t_note', { a: wx.sols[0], b: wx.sols[1], n: rad.observations, y0: rad.years[0], y1: rad.years[1] });
   const photo = state.target.photo;
   $('t-photo').hidden = !photo;
   if (photo) $('t-photo').src = photo.file;
   $('t-caption').textContent = photo ? t('t_photo', photo) : t('t_caption');
-  $('t-body').innerHTML = line('t_min', 'min', '–', '–') + line('t_avg', 'mean', rad, Math.round(f.oxygenUse)) + line('t_max', 'max', '–', '–');
+  $('t-body').innerHTML = line('t_min', 'min', '–') + line('t_avg', 'mean', Math.round(f.oxygenUse)) + line('t_max', 'max', '–');
 
   const reasons = [];
   if (r.above_safe_m > 0) reasons.push(t('r_slope', { over: r.above_safe_m, safe }));
@@ -413,8 +416,13 @@ function stepDrive(dt) {
   rover.position.lerpVectors(d.points[i - 1], d.points[i], k);
   const ahead = d.points[Math.min(i + 2, d.points.length - 1)];
   if (ahead.distanceToSquared(rover.position) > 1) rover.lookAt(ahead.x, rover.position.y, ahead.z);
+  if (state.view === 'path') {  // the camera rides along so the rover stays readable
+    controls.target.lerp(rover.position, 0.08);
+    landCam.position.lerp(FOLLOW.clone().add(rover.position), 0.035);
+  }
   if (d.t >= 1) { state.drive = null; d.done(); }
 }
+const FOLLOW = new THREE.Vector3(70, 95, 150);
 
 async function sendRover() {
   if (state.busy || !state.target) return;
@@ -448,7 +456,7 @@ async function sendRover() {
     log('log_home');
   }
   state.busy = false; $('send').disabled = false; $('send').textContent = t('send_rover');
-  drawPanels();
+  drawPanels(); await wait(1200); frameRoute();
 }
 
 /* ───────────────────────── globe → site ───────────────────────── */

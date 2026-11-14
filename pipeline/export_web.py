@@ -49,11 +49,9 @@ PHOTOS = {
 WEATHER_FEED = "https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json"
 
 # Representative surface radiation: Curiosity RAD in Gale crater, not Jezero.
-RADIATION = {
-    "dose_equivalent_msv_per_day": 0.67,
-    "absorbed_dose_mgy_per_day": 0.21,
-    "source": "MSL RAD, Gale crater (Hassler et al. 2014; SwRI release)",
-}
+# Dose equivalent is the published 2012-2013 mean; the absorbed dose statistics
+# come from pipeline/fetch_rad.py (measured, whole mission).
+DOSE_EQUIVALENT_MSV_PER_DAY = 0.67
 
 
 def get(url):
@@ -106,6 +104,18 @@ def weather():
         "air_temp_c": {"min": min(lows), "mean": round(float(np.mean(lows + highs)), 1), "max": max(highs)},
         "pressure_pa": {"min": min(pressure), "mean": round(float(np.mean(pressure)), 1), "max": max(pressure)},
         "source": "Perseverance MEDA, NASA Mars 2020 weather feed",
+    }
+
+
+def radiation():
+    rad = json.loads((DATA / "radiation.json").read_text())
+    return {
+        "dose_equivalent_msv_per_day": DOSE_EQUIVALENT_MSV_PER_DAY,
+        "absorbed_mgy_per_day": rad["absorbed_dose_mgy_per_day"],
+        "observations": rad["sampled_observations"],
+        "sol_range": rad["sol_range"],
+        "years": [int(rad["utc_range"][0][:4]), int(rad["utc_range"][1][:4])],
+        "source": "Curiosity RAD, Gale crater (PDS MSL-M-RAD-3-RDR-V1.0; Hassler et al. 2014)",
     }
 
 
@@ -190,7 +200,7 @@ def main():
         "base": {"name": "Octavia E. Butler Landing", **routes["start"]},
         "targets": targets,
         "rover": routes["rover"], "soil": routes["soil"], "crew": routes["crew"],
-        "radiation": RADIATION,
+        "radiation": radiation(),
         "weather": weather(),
         "validation": validation,
         "scenario": {
