@@ -45,7 +45,10 @@ ROVER = {
     "idle_power_w": 100.0,     # avionics, heaters
     "battery_wh": 3000.0,
     "battery_reserve": 0.2,
+    "solar_peak_w": 90.0,      # panel output facing the sun; kept below idle power so every move still costs energy
 }
+# PLACEHOLDER sun: one fixed mid-morning position for the whole traverse (azimuth clockwise from north).
+SUN = {"elevation_deg": 30.0, "azimuth_deg": 100.0}
 # PLACEHOLDER ground model: thermal inertia (J m-2 K-1 s-1/2) tells loose sand
 # (low) from firm rock (high); wheels lose more energy on loose ground.
 SOIL = {
@@ -78,8 +81,30 @@ def rolling_resistance(shape):
         [s["rolling_resistance_loose"], s["rolling_resistance_firm"]])
 
 
-def edge_terms(elev, slope, crr, meta):
-    """Per-direction arrays for every move: length, slope, climb, resistance, validity."""
+def sunlight(elev, meta):
+    """Per-cell share of full panel power: the sun's angle on the ground, 0 in cast shadow.
+    The panel lies flat on the rover, so it tilts with the terrain."""
+    el, az = math.radians(SUN["elevation_deg"]), math.radians(SUN["azimuth_deg"])
+    cell, (h, w) = meta["cell_m"], elev.shape
+    south, east = np.gradient(elev, cell)  # rows run north to south
+    lit = (-east * math.sin(az) * math.cos(el) + south * math.cos(az) * math.cos(el) + math.sin(el))
+    lit = np.clip(lit / np.sqrt(east ** 2 + south ** 2 + 1.0), 0.0, 1.0)
+    # Walk from every cell towards the sun; ground that rises above the sun ray shades it.
+    dr, dc = -math.cos(az), math.sin(az)
+    dr, dc = dr / max(abs(dr), abs(dc)), dc / max(abs(dr), abs(dc))
+    rise = cell * math.hypot(dr, dc) * math.tan(el)
+    for k in range(1, int((elev.max() - elev.min()) / rise) + 2):
+        r, c = round(k * dr), round(k * dc)
+        if abs(r) >= h or abs(c) >= w:
+            break
+        src = (slice(max(0, -r), h - max(0, r)), slice(max(0, -c), w - max(0, c)))
+        dst = (slice(max(0, r), h - max(0, -r)), slice(max(0, c), w - max(0, -c)))
+        lit[src][elev[dst] - elev[src] > k * rise] = 0.0
+    return lit
+
+
+def edge_terms(elev, slope, crr, sun, meta):
+    """Per-direction arrays for every move: length, slope, climb, resistance, sunlight, validity."""
     cell, max_slope = meta["cell_m"], meta["max_slope_deg"]
     h, w = elev.shape
     for dr, dc in MOVES:
@@ -92,14 +117,16 @@ def edge_terms(elev, slope, crr, meta):
         climb[src] = np.maximum(elev[dst] - elev[src], 0.0)
         resistance = crr.copy()
         resistance[src] = np.maximum(crr[src], crr[dst])
-        yield length, s, climb, resistance, s <= max_slope
+        light = sun.copy()
+        light[src] = np.minimum(sun[src], sun[dst])
+        yield length, s, climb, resistance, light, s <= max_slope
 
 
-def edge_costs(profile, elev, slope, crr, meta):
+def edge_costs(profile, elev, slope, crr, sun, meta):
     """costs[d] (flat arrays) for a profile and the lowest straight-move cost."""
     r, max_slope, safe = ROVER, meta["max_slope_deg"], meta["safe_slope_deg"]
     costs = []
-    for length, s, climb, resistance, ok in edge_terms(elev, slope, crr, meta):
+    for length, s, climb, resistance, light, ok in edge_terms(elev, slope, crr, sun, meta):
         with np.errstate(invalid="ignore"):
             time_s = length / (r["speed_ms"] * speed_factor(s, max_slope))
             if profile == "fastest":
@@ -108,21 +135,23 @@ def edge_costs(profile, elev, slope, crr, meta):
                 c = length * (1.0 + (s / safe) ** 3)
                 ok = ok & (s <= safe)  # never enters cells above the safe limit
             else:
-                c = energy_wh(length, climb, time_s, resistance)
+                c = energy_wh(length, climb, time_s, resistance, light)
         costs.append(array("d", np.where(ok, c, INF).tobytes()))
     flat = {
         "fastest": meta["cell_m"] / r["speed_ms"],
         "safest": meta["cell_m"],
         "efficient": energy_wh(meta["cell_m"], 0.0, meta["cell_m"] / r["speed_ms"],
-                               SOIL["rolling_resistance_firm"]),
+                               SOIL["rolling_resistance_firm"], 1.0),
     }[profile]
     return costs, flat
 
 
-def energy_wh(length, climb, time_s, resistance):
+def energy_wh(length, climb, time_s, resistance, light):
+    """Battery energy for one move, net of what the solar panel collects on the way."""
     r = ROVER
     traction = r["mass_kg"] * G_MARS * (resistance * length + climb)
-    return (traction / r["drive_efficiency"] + r["idle_power_w"] * time_s) / 3600.0
+    return (traction / r["drive_efficiency"]
+            + (r["idle_power_w"] - r["solar_peak_w"] * light) * time_s) / 3600.0
 
 
 def to_cell(latlon, meta):
@@ -139,25 +168,27 @@ def to_lonlat(row, col, meta):
     return round(lon, 6), round(lat, 6)
 
 
-def leg_stats(cells, elev, slope, crr, meta):
-    """Distance, rover time/energy and crew walking time for one direction."""
+def leg_stats(cells, elev, slope, crr, sun, meta):
+    """Distance, rover time, net energy, crew walking time and solar gain for one direction."""
     max_slope = meta["max_slope_deg"]
-    dist = time_s = energy = walk_s = 0.0
+    dist = time_s = energy = walk_s = solar = 0.0
     for (r0, c0), (r1, c1) in zip(cells, cells[1:]):
         length = meta["cell_m"] * math.hypot(r1 - r0, c1 - c0)
         s = max(slope[r0, c0], slope[r1, c1])
         t = length / (ROVER["speed_ms"] * speed_factor(s, max_slope))
         dist += length
         time_s += t
+        light = min(sun[r0, c0], sun[r1, c1])
         energy += energy_wh(length, max(elev[r1, c1] - elev[r0, c0], 0.0), t,
-                            max(crr[r0, c0], crr[r1, c1]))
+                            max(crr[r0, c0], crr[r1, c1]), light)
+        solar += ROVER["solar_peak_w"] * light * t / 3600.0
         walk_s += length / (CREW["walk_speed_ms"] * speed_factor(s, max_slope))
-    return dist, time_s, energy, walk_s
+    return dist, time_s, energy, walk_s, solar
 
 
-def describe(name, cells, elev, slope, inertia, crr, meta):
-    out_leg = leg_stats(cells, elev, slope, crr, meta)
-    back_leg = leg_stats(cells[::-1], elev, slope, crr, meta)
+def describe(name, cells, elev, slope, inertia, crr, sun, meta):
+    out_leg = leg_stats(cells, elev, slope, crr, sun, meta)
+    back_leg = leg_stats(cells[::-1], elev, slope, crr, sun, meta)
     slopes = np.array([slope[r, c] for r, c in cells])
     battery = ROVER["battery_wh"] * (1 - ROVER["battery_reserve"])
     oxygen_h = CREW["oxygen_h"] * (1 - CREW["oxygen_reserve"])
@@ -169,6 +200,7 @@ def describe(name, cells, elev, slope, inertia, crr, meta):
         "distance_m": round(out_leg[0]),
         "rover_time_min": round(out_leg[1] / 60.0, 1),
         "rover_energy_wh": round(out_leg[2], 1),
+        "solar_gain_wh": round(out_leg[4], 1),
         "max_slope_deg": round(float(slopes.max()), 1),
         "above_safe_m": round(float((slopes > meta["safe_slope_deg"]).mean()) * out_leg[0]),
         "mean_thermal_inertia": round(float(np.mean([inertia[r, c] for r, c in cells]))),
@@ -188,8 +220,9 @@ def main():
     width = meta["shape"][1]
     start, goal = to_cell(START, meta), to_cell(GOAL, meta)
     inertia, crr = rolling_resistance(elev.shape)
+    sun = sunlight(elev, meta)
 
-    all_costs = {name: edge_costs(name, elev, slope, crr, meta) for name in PROFILES}
+    all_costs = {name: edge_costs(name, elev, slope, crr, sun, meta) for name in PROFILES}
 
     def plan(goal):
         routes = []
@@ -200,7 +233,7 @@ def main():
             if path is None:
                 raise SystemExit(f"{name}: goal {goal} unreachable")
             cells = [divmod(u, width) for u in path]
-            routes.append(describe(name, cells, elev, slope, inertia, crr, meta))
+            routes.append(describe(name, cells, elev, slope, inertia, crr, sun, meta))
         return routes
 
     routes = plan(goal)
@@ -217,7 +250,8 @@ def main():
         "rover": ROVER,
         "soil": SOIL,
         "crew": CREW,
-        "assumptions": "Rover and soil numbers are placeholders; crew numbers are lunar values; "
+        "sun": SUN,
+        "assumptions": "Rover, soil and sun numbers are placeholders; crew numbers are lunar values; "
                        "rover motion is simulated.",
         "routes": routes,
         "stops": stops,

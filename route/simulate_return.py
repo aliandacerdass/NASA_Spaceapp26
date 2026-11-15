@@ -38,10 +38,11 @@ def main():
     meta = json.loads((P.DATA / "meta.json").read_text())
     width, cell = meta["shape"][1], meta["cell_m"]
     inertia, crr = P.rolling_resistance(elev.shape)
+    sun = P.sunlight(elev, meta)
     base, target = P.to_cell(P.START, meta), P.to_cell(P.GOAL, meta)
     flat = lambda rc: rc[0] * width + rc[1]
 
-    costs, min_step = P.edge_costs(PROFILE, elev, slope, crr, meta)
+    costs, min_step = P.edge_costs(PROFILE, elev, slope, crr, sun, meta)
     t0 = time.perf_counter()
     planner = DStarLite(costs, width, flat(target), flat(base), min_step)
     first_plan_s = time.perf_counter() - t0
@@ -98,8 +99,8 @@ def main():
         "repair_total_s": round(repair_s, 3),
         "fresh_plan_at_first_detection_s": round(fresh_plan_s, 2),
         "events": events,
-        "planned": P.describe(PROFILE, planned, elev, slope, inertia, crr, meta),
-        "driven": P.describe(PROFILE, driven, elev, slope, inertia, crr, meta),
+        "planned": P.describe(PROFILE, planned, elev, slope, inertia, crr, sun, meta),
+        "driven": P.describe(PROFILE, driven, elev, slope, inertia, crr, sun, meta),
     }
     (P.DATA / "return_scenario.json").write_text(json.dumps(out, separators=(",", ":")) + "\n")
     print({k: v for k, v in out.items() if k not in ("obstacle", "events", "planned", "driven")})

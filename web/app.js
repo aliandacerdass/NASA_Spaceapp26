@@ -28,20 +28,21 @@ const I18N = {
     msg_nearest: 'Using the nearest surveyed target: {name}, {d} m from the point entered.',
     team_target: 'team target',
     layers_title: 'Data layers', layer_optical: 'Optical image (CTX)', layer_slope: 'Slope (HiRISE)',
-    layer_thermal: 'Thermal inertia (THEMIS)', vertical_note: 'Relief ×2. Rover not to scale.',
+    layer_thermal: 'Thermal inertia (THEMIS)', layer_sun: 'Sunlight (from HiRISE relief)', vertical_note: 'Relief ×2. Rover not to scale.',
     legend_slope: '10–15°   15–30°   over 30°, impassable',
     legend_thermal: 'dark: loose sand   bright: firm rock',
+    legend_sun: 'dark: in shadow   bright: facing the sun, {el}° above the horizon',
     back_globe: '← Mars', send_rover: 'Send rover', rover_busy: 'Rover on the way…',
     ledger_title: 'Base to {target} · {why}',
     fastest: 'Fastest', safest: 'Safest', efficient: 'Most efficient',
-    n_distance: 'distance', n_steepest: 'steepest', n_over: 'over {safe}°', n_time: 'rover time', n_energy: 'energy',
+    n_distance: 'distance', n_steepest: 'steepest', n_over: 'over {safe}°', n_time: 'rover time', n_energy: 'sun +{sun}',
     why_fast: 'Least driving time. {over} m of it is steeper than {safe}°.',
     why_fast_clean: 'Least driving time, and never steeper than {safe}°.',
     why_safe: 'Never steeper than {safe}°. {extra} m longer than the fastest.',
     why_safe_same: 'Never steeper than {safe}°, at no extra distance.',
-    why_eff: 'Least battery use: keeps to firmer ground. {pct}% less energy than the fastest.',
+    why_eff: 'Least battery use: firmer ground, more sun on the panel. {pct}% less energy than the fastest.',
     why_eff_same: 'Least battery use. Here it matches the fastest route.',
-    assumed_note: 'Time and energy use placeholder rover numbers. Distance and slope come from the terrain data.',
+    assumed_note: 'Time and energy use placeholder rover numbers and one fixed sun position; energy is net of the solar gain shown. Distance and slope come from the terrain data.',
     log_depart: 'Rover leaves base on the {route} route.',
     log_arrive: 'Arrived at {target}. {km} km driven, steepest slope {deg}°.',
     log_return: 'Returning to base.',
@@ -99,20 +100,21 @@ const I18N = {
     msg_nearest: 'En yakın taranmış hedef kullanılıyor: {name}, girilen noktaya {d} m.',
     team_target: 'ekip hedefi',
     layers_title: 'Veri katmanları', layer_optical: 'Optik görüntü (CTX)', layer_slope: 'Eğim (HiRISE)',
-    layer_thermal: 'Isıl atalet (THEMIS)', vertical_note: 'Yükseklik ×2. Rover ölçekli değil.',
+    layer_thermal: 'Isıl atalet (THEMIS)', layer_sun: 'Güneş ışığı (HiRISE yüksekliğinden)', vertical_note: 'Yükseklik ×2. Rover ölçekli değil.',
     legend_slope: '10–15°   15–30°   30° üstü, geçilmez',
     legend_thermal: 'koyu: gevşek kum   açık: sert kaya',
+    legend_sun: 'koyu: gölgede   açık: güneşe dönük, güneş ufuktan {el}° yukarıda',
     back_globe: '← Mars', send_rover: 'Rover\'ı gönder', rover_busy: 'Rover yolda…',
     ledger_title: 'Üsten {target} · {why}',
     fastest: 'En hızlı', safest: 'En güvenli', efficient: 'En verimli',
-    n_distance: 'mesafe', n_steepest: 'en dik', n_over: '{safe}° üstü', n_time: 'rover süresi', n_energy: 'enerji',
+    n_distance: 'mesafe', n_steepest: 'en dik', n_over: '{safe}° üstü', n_time: 'rover süresi', n_energy: 'güneş +{sun}',
     why_fast: 'En kısa sürüş süresi. Yolun {over} metresi {safe}°\'den dik.',
     why_fast_clean: 'En kısa sürüş süresi; hiçbir yerde {safe}°\'yi aşmıyor.',
     why_safe: 'Hiçbir yerde {safe}°\'yi aşmıyor. En hızlıdan {extra} m uzun.',
     why_safe_same: 'Hiçbir yerde {safe}°\'yi aşmıyor; ek mesafe yok.',
-    why_eff: 'En az batarya: sert zemini izliyor. En hızlıdan %{pct} az enerji.',
+    why_eff: 'En az batarya: sert zemin, panelde daha çok güneş. En hızlıdan %{pct} az enerji.',
     why_eff_same: 'En az batarya. Burada en hızlı rotayla aynı.',
-    assumed_note: 'Süre ve enerji varsayım rover değerlerine dayanır. Mesafe ve eğim arazi verisinden gelir.',
+    assumed_note: 'Süre ve enerji varsayım rover değerlerine ve tek bir sabit güneş konumuna dayanır; enerji, gösterilen güneş kazancı düşülmüş net değerdir. Mesafe ve eğim arazi verisinden gelir.',
     log_depart: 'Rover üsten {route} rotayla ayrıldı.',
     log_arrive: '{target} noktasına varıldı. {km} km yol, en dik eğim {deg}°.',
     log_return: 'Üsse dönülüyor.',
@@ -155,7 +157,7 @@ const $ = (id) => document.getElementById(id);
 // [group, name, credit, { en, tr } use, link]
 const SOURCES = [
   ['terrain', 'Mars 2020 Terrain Relative Navigation HiRISE DTM Mosaic', 'USGS Astrogeology Science Center · 1 m, resampled to 5 m',
-    { en: '3D terrain, slope and every route calculation.', tr: '3B arazi, eğim ve bütün rota hesapları.' }, 'https://doi.org/10.5066/P9REJ9JN'],
+    { en: '3D terrain, slope, sunlight and shadow, and every route calculation.', tr: '3B arazi, eğim, güneş ışığı ve gölge, bütün rota hesapları.' }, 'https://doi.org/10.5066/P9REJ9JN'],
   ['terrain', 'Mars 2020 Science Investigation CTX Orthomosaic', 'USGS Astrogeology Science Center · 5 m · public domain',
     { en: 'The image draped on the terrain. Single-band, tinted to Mars colours for display.', tr: 'Arazinin üstüne giydirilen görüntü. Tek bantlı; gösterim için Mars renklerine boyandı.' }, 'https://astrogeology.usgs.gov/search/map/mars_2020_science_investigation_ctx_dem_mosaic'],
   ['terrain', 'THEMIS-derived Thermal Inertia of Jezero Crater', 'Edwards, C. S. and Buz, J. (2021) · 100 m · CC BY 4.0',
@@ -345,7 +347,7 @@ function label(text, color = '#e9dfcf') {
   return s;
 }
 
-let overlaySlope, overlayThermal, rover, obstacle;
+let overlaySlope, overlayThermal, overlaySun, rover, obstacle;
 const ROVER_SCALE = 34;  // the real rover is 0.82 m long; drawn larger so it can be seen on a 10 km map
 async function loadRover() {  // the team's CAD model, see pipeline/export_rover.py
   const buf = await fetch('assets/rover.bin').then((r) => r.arrayBuffer());
@@ -378,6 +380,7 @@ function buildLand() {
     mesh.position.y = lift; mesh.visible = false; land.add(mesh); return mesh;
   };
   overlayThermal = overlay('data/thermal.png', 0.5);
+  overlaySun = overlay('data/sun.png', 0.7);
   overlaySlope = overlay('data/slope.png', 0.9);
 
   rover = new THREE.Group();
@@ -478,7 +481,7 @@ function drawLedger(animate) {
       num(r.max_slope_deg.toFixed(1), '°', 'n_steepest') +
       num(r.above_safe_m, 'm', 'n_over', { safe }) +
       num(Math.round(r.rover_time_min), 'min', 'n_time', {}, true) +
-      num(Math.round(r.rover_energy_wh), 'Wh', 'n_energy', {}, true) +
+      num(Math.round(r.rover_energy_wh), 'Wh', 'n_energy', { sun: Math.round(r.solar_gain_wh) }, true) +
       `<span class="why">${whyText(r)}</span>`;
     row.addEventListener('click', () => { if (!state.busy) { state.routeId = r.id; refreshTarget(false); } });
     box.appendChild(row);
@@ -765,6 +768,7 @@ function setView(view) {
   for (const g of [markGroup, routeGroup, extraGroup]) g.visible = !cabin;
   overlaySlope.visible = !cabin && $('layer-slope').checked;
   overlayThermal.visible = !cabin && $('layer-thermal').checked;
+  overlaySun.visible = !cabin && $('layer-sun').checked;
   sound(view === 'astronaut' && state.sound);
   drawPanels(); setPrompt(); fit();
 }
@@ -783,7 +787,8 @@ function setLegend() {
   const sw = (c) => `<b style="background:${c}"></b>`;
   $('legend').innerHTML = overlaySlope?.visible
     ? `${sw('#f2b33d')}10–15° ${sw('#ff7828')}15–30° ${sw('#e5484d')}${lang === 'tr' ? '30° üstü' : 'over 30°'}`
-    : overlayThermal?.visible ? t('legend_thermal') : '';
+    : overlayThermal?.visible ? t('legend_thermal')
+      : overlaySun?.visible ? t('legend_sun', { el: mission.sun.elevation_deg }) : '';
 }
 
 let last = performance.now();
@@ -817,6 +822,8 @@ function frame(now) {
 }
 
 async function start() {
+  // The globe needs none of the site data, so it is on screen while that downloads.
+  $('host-path').appendChild(renderer.domElement); fit(); requestAnimationFrame(frame);
   [mission, height] = await Promise.all([
     fetch('data/mission.json').then((r) => r.json()),
     fetch('data/height.bin').then((r) => r.arrayBuffer()).then((b) => new Uint16Array(b)),
@@ -838,6 +845,7 @@ async function start() {
   $('back').addEventListener('click', () => { if (!state.busy) setPhase('globe'); });
   $('layer-slope').addEventListener('change', (e) => { overlaySlope.visible = e.target.checked; setLegend(); });
   $('layer-thermal').addEventListener('change', (e) => { overlayThermal.visible = e.target.checked; setLegend(); });
+  $('layer-sun').addEventListener('change', (e) => { overlaySun.visible = e.target.checked; setLegend(); });
   $('eva-play').addEventListener('click', () => {
     if (!state.target) return;
     eva.p = 0; eva.playing = true; $('eva-play').textContent = t('eva_playing');
@@ -852,6 +860,5 @@ async function start() {
   window.addEventListener('resize', () => { fit(); if (state.target && state.phase === 'terrain') drawLedger(); });
   setLang(lang);
   setView('path');
-  requestAnimationFrame(frame);
 }
 start();

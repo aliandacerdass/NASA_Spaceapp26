@@ -6,7 +6,7 @@ Output: web/data/mission.json   targets, routes with profiles, return scenario, 
                                 (0..65535 spans grid.height_min_m..height_max_m)
         web/data/basemap.jpg    CTX image on the mission grid, tinted to Mars colours
         web/data/normal.jpg     object-space normal map from the full 5 m elevation grid
-        web/data/slope.png, thermal.png   transparent overlays
+        web/data/slope.png, thermal.png, sun.png   transparent overlays
         web/data/mars.jpg       global Viking colour mosaic for the globe (NASA Mars Trek)
         web/assets/astronaut.jpg  Apollo 11 photo AS11-40-5903 (NASA, public domain)
         web/assets/arrival/*.jpg  Perseverance Navcam photos taken at the science stops
@@ -24,6 +24,8 @@ import numpy as np
 from matplotlib import colormaps
 from PIL import Image
 from scipy.ndimage import gaussian_filter, zoom
+
+from route.plan_routes import SUN, sunlight
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data/processed"
@@ -137,7 +139,7 @@ def terrain_textures(elev, meta):
     Image.fromarray(((n * 0.5 + 0.5) * 255).round().astype(np.uint8)).save(WEB / "normal.jpg", quality=93)
 
 
-def overlays(slope, meta):
+def overlays(elev, slope, meta):
     safe, limit = meta["safe_slope_deg"], meta["max_slope_deg"]
     s = slope.reshape(1000, 2, 1000, 2).max(axis=(1, 3))
     rgba = np.zeros((1000, 1000, 4), np.uint8)
@@ -152,6 +154,16 @@ def overlays(slope, meta):
     colour = (colormaps["inferno"](scaled) * 255).astype(np.uint8)
     colour[..., 3] = 170
     Image.fromarray(colour).save(WEB / "thermal.png")
+
+    # Sunlight: cast shadows dark, slopes facing the sun bright, level ground left clear.
+    lit = sunlight(elev, meta).reshape(1000, 2, 1000, 2).mean(axis=(1, 3))
+    level = np.sin(np.radians(SUN["elevation_deg"]))
+    glow = np.clip((lit - level) / (1 - level), 0, 1)
+    dim = np.clip(1 - lit / level, 0, 1)
+    rgba = np.zeros((1000, 1000, 4), np.uint8)
+    rgba[..., :3] = np.where((glow > 0)[..., None], (255, 214, 110), (10, 16, 44))
+    rgba[..., 3] = (np.maximum(glow * 1.6, dim).clip(0, 1) * 12).round() * 16  # few alpha steps keep the file small
+    Image.fromarray(rgba).save(WEB / "sun.png", optimize=True)
     return float(inertia.min()), float(inertia.max())
 
 
@@ -196,7 +208,7 @@ def main():
     h_min, h_max = float(height.min()), float(height.max())
     ((height - h_min) / (h_max - h_min) * 65535).round().astype("<u2").tofile(WEB / "height.bin")
     terrain_textures(elev, meta)
-    ti_min, ti_max = overlays(slope, meta)
+    ti_min, ti_max = overlays(elev, slope, meta)
     inertia = zoom(np.array(Image.open(LAYERS / "jezero_thermal_inertia_100m.tif"), dtype=float),
                    n / 100, order=1)
 
@@ -218,7 +230,7 @@ def main():
                  "thermal_inertia_range": [ti_min, ti_max]},
         "base": {"name": "Octavia E. Butler Landing", **routes["start"]},
         "targets": targets,
-        "rover": routes["rover"], "soil": routes["soil"], "crew": routes["crew"],
+        "rover": routes["rover"], "soil": routes["soil"], "crew": routes["crew"], "sun": routes["sun"],
         "radiation": radiation(),
         "weather": weather(),
         "validation": validation,

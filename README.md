@@ -92,7 +92,7 @@ cheapest path for each of three profiles:
 
 - **Fastest**: least driving time. The rover slows down on slopes.
 - **Safest**: never enters cells steeper than the safe limit (15 degrees).
-- **Most efficient**: least battery use. Loose ground costs more energy than firm ground.
+- **Most efficient**: least battery use. Loose ground costs more energy than firm ground, and sunlit ground gives some back through the solar panel (shadows and sun angle computed from the elevation model for one fixed sun position).
 
 Cells steeper than 30 degrees are impassable for every profile.
 
@@ -172,6 +172,7 @@ including replanning after hidden obstacles appear.
 | Hidden obstacle | Placed by us |
 | Rover mass, speed, battery, power use | Placeholders until the rover design is final |
 | Thermal inertia to rolling resistance mapping | Placeholder |
+| Sun position and solar panel power | Placeholders: one fixed sun, 30 deg above the horizon in the east |
 | Crew walking speed, EVA duration, reserve | Sourced, but measured for lunar suits |
 | Suit oxygen and battery | Drawn down over the 8 hour suit design duration as the walk time passes |
 | Heart rate and breathing | Example values, at rest and walking |

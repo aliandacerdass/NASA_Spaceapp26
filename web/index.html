@@ -10,6 +10,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<link rel="modulepreload" href="vendor/three.module.min.js">
+<link rel="modulepreload" href="vendor/OrbitControls.js">
+<link rel="preload" as="image" href="data/mars.jpg" crossorigin fetchpriority="high">
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.min.js" } }
 </script>
@@ -84,6 +87,7 @@
         <label><input type="checkbox" checked disabled> <span data-i18n="layer_optical">Optical image (CTX)</span></label>
         <label><input type="checkbox" id="layer-slope"> <span data-i18n="layer_slope">Slope (HiRISE)</span></label>
         <label><input type="checkbox" id="layer-thermal"> <span data-i18n="layer_thermal">Thermal inertia (THEMIS)</span></label>
+        <label><input type="checkbox" id="layer-sun"> <span data-i18n="layer_sun">Sunlight (from HiRISE relief)</span></label>
         <p class="legend" id="legend"></p>
         <p class="legend" data-i18n="vertical_note">Relief ×2. Rover not to scale.</p>
         <button type="button" class="back" id="back" data-i18n="back_globe">← Mars</button>
@@ -98,7 +102,7 @@
           <button class="send" id="send" data-i18n="send_rover">Send rover</button>
         </div>
         <div class="routes" id="routes"></div>
-        <p class="assumed" data-i18n="assumed_note">Time and energy use placeholder rover numbers. Distance and slope come from the terrain data.</p>
+        <p class="assumed" data-i18n="assumed_note">Time and energy use placeholder rover numbers and one fixed sun position; energy is net of the solar gain shown. Distance and slope come from the terrain data.</p>
       </div>
     </section>
 
