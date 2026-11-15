@@ -744,7 +744,8 @@ function fit() {
   const ledger = state.view === 'path' && state.phase === 'terrain' ? $('ledger').offsetHeight + 20 : 0;
   document.documentElement.style.setProperty('--ledger-h', ledger + 'px');
   const dx = !wide ? 0 : state.view === 'rover' ? 100 : state.view === 'path' ? -rail / 2 : 0;
-  const dy = wide ? ledger / 2 : state.view === 'path' ? h * 0.24 : 0;  // on phones the scene sits in the top half
+  const dy = wide ? ledger / 2 : state.view === 'path' || state.view === 'rover' ? h * 0.24 : 0;  // on phones the scene sits in the top half
+  bayCam.position.set(1.75, 0.95, 2.25).multiplyScalar(wide ? 1 : 1.7); bayCam.lookAt(0, 0.3, 0);  // step back on narrow screens
   for (const cam of [globeCam, landCam, roverCam, bayCam]) {
     cam.aspect = w / h;
     if (dx || dy) cam.setViewOffset(w, h, dx, dy, w, h); else cam.clearViewOffset();
