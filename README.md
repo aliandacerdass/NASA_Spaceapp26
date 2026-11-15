@@ -242,8 +242,9 @@ docs/       images/ (screenshots)
 
 ## Use of AI
 
-AI coding assistants (including Anthropic's Claude) were used to write and review
-the code in this repository, to process the data and to search for sources. Team
+AI assistants (including Anthropic's Claude and OpenAI's ChatGPT) were used to write
+and review the code in this repository, to help with the mapping, to process the data
+and to search for sources. Team
 members decided the concept, checked the outputs and are responsible for the
 content. No AI-generated images or video are used: every image is a NASA or USGS
 product, or is drawn by code from the data. The repository contains no NASA logos
