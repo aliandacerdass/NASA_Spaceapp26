@@ -308,20 +308,22 @@ const toPoints = (cells, lift, step = 3) => {
   pts.push(world(cells[cells.length - 1], lift));
   return pts;
 };
-// Draw a tube from its start to its end over time, led by a bright point.
-function reveal(mesh, color, delay, seconds) {
+// Draw a tube over time, led by a bright point. D* Lite searches from the goal back to the rover,
+// so planned routes grow from the target towards base (back = true).
+function reveal(mesh, color, delay, seconds, back = false) {
   mesh.geometry.setDrawRange(0, 0);
   const head = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 12), new THREE.MeshBasicMaterial({ color }));
   head.renderOrder = 6; head.visible = false; mesh.parent.add(head);
-  reveals.push({ mesh, head, t: -delay / seconds, seconds, total: mesh.geometry.index.count });
+  reveals.push({ mesh, head, back, t: -delay / seconds, seconds, total: mesh.geometry.index.count });
 }
 function stepReveals(dt) {
   for (let i = reveals.length - 1; i >= 0; i--) {
     const r = reveals[i]; r.t += dt / r.seconds;
     if (r.t < 0) continue;
     const k = Math.min(r.t, 1), e = k < 0.5 ? 2 * k * k : 1 - 2 * (1 - k) * (1 - k);
-    r.mesh.geometry.setDrawRange(0, Math.floor(e * r.total / 3) * 3);
-    r.head.visible = k < 1; r.head.position.copy(r.mesh.userData.curve.getPointAt(e));
+    const n = Math.floor(e * r.total / 3) * 3;
+    r.mesh.geometry.setDrawRange(r.back ? r.total - n : 0, n);
+    r.head.visible = k < 1; r.head.position.copy(r.mesh.userData.curve.getPointAt(r.back ? 1 - e : e));
     if (k >= 1) { r.head.removeFromParent(); reveals.splice(i, 1); }
   }
 }
@@ -411,7 +413,7 @@ function drawRoutes(animate) {
     const lift = { fastest: 3.0, efficient: 3.6, safest: 4.2 }[r.id];
     const mesh = tube(toPoints(r.cells, lift), COLORS[r.id], on ? 2.1 : 1.1, on ? 1 : 0.55);
     mesh.renderOrder = on ? 3 : 2; routeGroup.add(mesh);
-    if (animate) reveal(mesh, COLORS[r.id], order[r.id] * 0.55, 1.5);
+    if (animate) reveal(mesh, COLORS[r.id], order[r.id] * 0.55, 1.5, true);
   }
   const pin = (cell, color, text) => {
     const p = world(cell);
